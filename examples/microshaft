@@ -1,0 +1,83 @@
+(address (Bitdiddle Ben) (Slumerville (Ridge Road) 10))
+(job (Bitdiddle Ben) (computer wizard))
+(salary (Bitdiddle Ben) 60000)
+
+(address (Hacker Alyssa P) (Cambridge (Mass Ave) 78))
+(job (Hacker Alyssa P) (computer programmer))
+(salary (Hacker Alyssa P) 40000)
+(supervisor (Hacker Alyssa P) (Bitdiddle Ben))
+
+(address (Fect Cy D) (Cambridge (Ames Street) 3))
+(job (Fect Cy D) (computer programmer))
+(salary (Fect Cy D) 35000)
+(supervisor (Fect Cy D) (Bitdiddle Ben))
+
+(address (Tweakit Lem E) (Boston (Bay State Road) 22))
+(job (Tweakit Lem E) (computer technician))
+(salary (Tweakit Lem E) 25000)
+(supervisor (Tweakit Lem E) (Bitdiddle Ben))
+
+(address (Reasoner Louis) (Slumerville (Pine Tree Road) 80))
+(job (Reasoner Louis) (computer programmer trainee))
+(salary (Reasoner Louis) 30000)
+(supervisor (Reasoner Louis) (Hacker Alyssa P))
+
+(supervisor (Bitdiddle Ben) (Warbucks Oliver))
+(address (Warbucks Oliver) (Swellesley (Top Heap Road)))
+(job (Warbucks Oliver) (administration big wheel))
+(salary (Warbucks Oliver) 150000)
+
+(address (Scrooge Eben) (Weston (Shady Lane) 10))
+(job (Scrooge Eben) (accounting chief accountant))
+(salary (Scrooge Eben) 75000)
+(supervisor (Scrooge Eben) (Warbucks Oliver))
+
+(address (Cratchet Robert) (Allston (N Harvard Street) 16))
+(job (Cratchet Robert) (accounting scrivener))
+(salary (Cratchet Robert) 18000)
+(supervisor (Cratchet Robert) (Scrooge Eben))
+
+(address (Aull DeWitt) (Slumerville (Onion Square) 5))
+(job (Aull DeWitt) (administration secretary))
+(salary (Aull DeWitt) 25000)
+(supervisor (Aull DeWitt) (Warbucks Oliver))
+
+(can-do-job (computer wizard) (computer programmer))
+(can-do-job (computer wizard) (computer technician))
+(can-do-job (computer programmer) (computer programmer trainee))
+(can-do-job (administration secretary) (administration big wheel))
+
+(rule (wheel ?person)
+ (and (supervisor ?middle-manager ?person)
+ (supervisor ?x ?middle-manager)))
+
+(rule (same ?x ?x))
+
+(rule (lives-near ?person-1 ?person-2)
+ (and (address ?person-1 (?town . ?rest-1))
+  (address ?person-2 (?town . ?rest-2))
+  (lisp-value "#(< (compare (into [] %1) (into [] %2)) 0))" ?person-1 ?person-2) ;; This line is to illuminate duplicates, see Exercise 4.60
+  (not (same ?person-1 ?person-2))))
+
+(rule (outranked-by ?staff-person ?boss)
+ (or (supervisor ?staff-person ?boss)
+ (and (supervisor ?staff-person ?middle-manager)
+ (outranked-by ?middle-manager ?boss))))
+
+;; Exercise 4.57
+(rule (can-replace ?p1 ?p2)
+ (and (job ?p2 ?j1) (or (job ?p1 ?j1) (and (job ?p1 ?j2) (can-do-job ?j2 ?j1))) (not (same ?p1 ?p2))))
+
+;; Exercise 4.58
+(rule (big-shot ?p)
+ (and (job ?p (?d . ?t1)) (not (and (supervisor ?p ?m) (job ?m (?d . ?t2))))))
+
+;; Exercise 4.59
+(meeting accounting (Monday 9 am))
+(meeting administration (Monday 10 am))
+(meeting computer (Wednesday 3 pm))
+(meeting administration (Friday 1 pm))
+(meeting whole-company (Wednesday 4 pm))
+
+(rule (meeting-time ?person ?day-and-time)
+ (or (and (job ?person (?d . ?t)) (meeting ?d ?day-and-time)) (meeting whole-company ?day-and-time)))

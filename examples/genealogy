@@ -1,0 +1,26 @@
+;; Exercise 4.63
+(son Adam Cain)
+(son Cain Enoch)
+(son Enoch Irad)
+(son Irad Mehujael)
+(son Mehujael Methushael)
+(son Methushael Lamech)
+(wife Lamech Ada)
+(son Ada Jabal)
+(son Ada Jubal)
+
+(rule (grandson ?g ?s)
+  (and (son ?g ?f) (son ?f ?s)))
+
+(rule (son ?m ?s)
+  (and (wife ?m ?w) (son ?w ?s)))
+
+;; Exercise 4.69
+(rule (last-pair (?v) (?v)))
+(rule (last-pair (?v . ?u) ?x)
+  (last-pair ?u ?x))
+
+(rule ((grandson) ?x ?y) (grandson ?x ?y))
+
+(rule ((great . ?rel) ?x ?y)
+  (and (son ?x ?s) (?rel ?s ?y) (last-pair ?rel (grandson))))

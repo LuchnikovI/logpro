@@ -1,0 +1,21 @@
+(rule (append-to-form () ?y ?y))
+(rule (append-to-form (?u . ?v) ?y (?u . ?z))
+ (append-to-form ?v ?y ?z))
+
+;; Exercise 4.61
+(rule (?x next-to ?y in (?x ?y . ?u)))
+(rule (?x next-to ?y in (?v . ?z))
+(?x next-to ?y in ?z))
+
+;; Exercise 4.62
+(rule (last-pair (?v) (?v)))
+(rule (last-pair (?v . ?u) ?x)
+  (last-pair ?u ?x))
+
+;; Exercise 4.68:
+(rule (reverse () ()))
+(rule (reverse ?a ?b)
+ (and
+  (append-to-form (?u) ?d ?a)
+  (append-to-form ?c (?u) ?b)
+  (reverse ?d ?c)))
