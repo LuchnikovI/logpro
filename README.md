@@ -22,8 +22,10 @@ The `./examples` directory contains sample databases, primarily derived from SIC
 
 ## Difference from the Scheme based implementation from SICP
 
-A primary divergence from the reference SICP implementation concerns the `lisp-value` special form. `lisp-value` takes a quoted Clojure from specifying a predicate, e.g. `"#(< % 20)"`, while the reference implementation takes unquoted Scheme form.
+A primary divergence from the reference SICP implementation concerns the `lisp-value` special form. `lisp-value` special form is replaced by the `clojure-predicate` special form with similar semantics. The difference is that `clojure-predicate` takes a quoted Clojure form specifying a predicate, e.g. `"#(> % 0)"`, while the `lisp-value` takes unquoted Scheme form.
 
 ## TODO
-1. Loops detection in deduction chains (see Exercise 4.67 from SICP);
-2. The `and` special form performance optimization outlined in Exercise 4.76 of SICP.
+
+1. Loops detection in deduction chains (see Exercise 4.67 from SICP) and memoization to prevent recomputing of already evaluated queries;
+2. The `and` special form performance optimization outlined in Exercise 4.76 of SICP;
+3. Propper errors handling.

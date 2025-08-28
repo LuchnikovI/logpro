@@ -77,7 +77,7 @@
   (let [fst (first (get-conclusion rule))]
     (if (and (not (variable? fst)) (symbol? fst))
       fst
-      nil)))  
+      nil)))
 
 ;; data-base abstraction
 
@@ -204,7 +204,7 @@
                           (assoc frame var val)))
       (depends-on? val var frame) nil
       :else (assoc frame var val))))
-      
+
 (defn unify-seqs [lhs-dat rhs-dat frame]
   (cond
     (and (empty? lhs-dat) (empty? rhs-dat)) frame
@@ -216,9 +216,9 @@
 
 (defn unify [p1 p2 frame]
   (cond
-    (nil? frame) frame 
+    (nil? frame) frame
     (variable? p1) (extend-if-possible p1 p2 frame)
-    (variable? p2) (extend-if-possible p2 p1 frame)    
+    (variable? p2) (extend-if-possible p2 p1 frame)
     (and (sequential? p1) (sequential? p2)) (unify-seqs p1 p2 frame)
     (= p1 p2) frame
     :else nil))
@@ -265,10 +265,10 @@
 
 (defn get-not-body [query] (nth query 1))
 
-(defn lisp-value-query? [query]
-  (and (sequential? query) (= (first query) 'lisp-value)))
+(defn clojure-pred-query? [query]
+  (and (sequential? query) (= (first query) 'clojure-predicate)))
 
-(defn get-lisp-value-body [lisp-value-query] (rest lisp-value-query))
+(defn get-clojure-pred-body [clojure-pred-query] (rest clojure-pred-query))
 
 ;; eval primitives
 
@@ -320,20 +320,23 @@
         (empty? matches))
      frames)))
 
-(defn ev-lisp-value-query [lisp-value-query _ frames]
-  (let [[pred & queries] (get-lisp-value-body lisp-value-query)]
+(defn apply-clojure-func [func queries frame]
+  (apply
+   func
+   (map
+    (fn [query]
+      (instantiate
+       query
+       frame
+       (fn [expr _]
+         (throw (ex-info "Unknown variable: " {:var expr})))))
+    queries)))
+
+(defn ev-clojure-pred-query [clojure-pred-query _ frames]
+  (let [[func-str & queries] (get-clojure-pred-body clojure-pred-query)
+        func (eval (read-string func-str))]
     (filter
-     (fn [frame]
-        (apply
-         (eval (read-string pred))
-         (map
-          (fn [query]
-            (instantiate
-             query
-             frame
-             (fn [expr _]
-               (throw (ex-info "Unknown variable: " {:var expr})))))
-          queries)))
+     #(apply-clojure-func func queries %)
      frames)))
 
 (defn ev-query [query db frames]
@@ -341,7 +344,7 @@
     (and-query? query) (ev-and-query query db frames)
     (or-query? query) (ev-or-query query db frames)
     (not-query? query) (ev-not-query query db frames)
-    (lisp-value-query? query) (ev-lisp-value-query query db frames)
+    (clojure-pred-query? query) (ev-clojure-pred-query query db frames)
     :else (ev-simple-query query db frames)))
 
 ;; prompts

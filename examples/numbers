@@ -1,3 +1,4 @@
+(number 0)
 (number 1)
 (number 2)
 (number 3)
@@ -23,12 +24,11 @@
 (number 23)
 (number 24)
 (number 25)
-(Number 26)
-(Number 27)
-(Number 28)
-(Number 29)
-(Number 30)
-
+(number 26)
+(number 27)
+(number 28)
+(number 29)
+(number 30)
 
 (rule (even-sum ?x ?y)
-  (and (number ?x) (number ?y) (lisp-value "#(even? (+ %1 %2))" ?x ?y)))
+  (and (number ?x) (number ?y) (clojure-predicate "#(even? (+ %1 %2))" ?x ?y)))
