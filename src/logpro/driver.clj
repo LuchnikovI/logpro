@@ -40,7 +40,9 @@
   (and (sequential? expr) (= (first expr) 'assert!)))
 
 (defn get-assertion-body [assertion]
-  (nth assertion 1))
+  (if (not= (count assertion) 2)
+    (throw (ex-info "Bad assertion!", {'assertion assertion}))
+    (nth assertion 1)))
 
 ;; rule abstraction
 
@@ -66,9 +68,10 @@
       (helper rule))))
 
 (defn get-rule-body [rule]
-  (try
-    (nth rule 2)
-    (catch Exception _ nil)))
+  (case (count rule)
+    1 (throw (ex-info "Bad rule!", {'rule rule}))
+    2 nil
+    3 (nth rule 2)))
 
 (defn get-conclusion [rule]
   (nth rule 1))
@@ -175,7 +178,8 @@
     (nil? frame) frame
     (variable? pat) (extend-if-consistent pat dat frame)
     (and (sequential? pat) (sequential? dat)) (match-seqs pat dat frame)
-    (= pat dat) frame))
+    (= pat dat) frame
+    :else nil))
 
 ;; unification
 
@@ -253,22 +257,30 @@
 (defn and-query? [query]
   (and (sequential? query) (= (first query) 'and)))
 
-(defn get-and-body [and-query] (rest and-query))
+(defn get-and-body [and-query]
+  (rest and-query))
 
 (defn or-query? [query]
   (and (sequential? query) (= (first query) 'or)))
 
-(defn get-or-body [or-query] (rest or-query))
+(defn get-or-body [or-query]
+  (rest or-query))
 
 (defn not-query? [query]
   (and (sequential? query) (= (first query) 'not)))
 
-(defn get-not-body [query] (nth query 1))
+(defn get-not-body [query]
+  (if (not= (count query) 2)
+    (throw (ex-info "Bad Not query!", {'not-query query}))
+    (nth query 1)))
 
 (defn clojure-pred-query? [query]
   (and (sequential? query) (= (first query) 'clojure-predicate)))
 
-(defn get-clojure-pred-body [clojure-pred-query] (rest clojure-pred-query))
+(defn get-clojure-pred-body [clojure-pred-query]
+  (if (< (count clojure-pred-query) 3)
+    (throw (ex-info "Bad Clojure predicate query!", {'clojure-preidcate-query clojure-pred-query}))
+    (rest clojure-pred-query)))
 
 ;; eval primitives
 
@@ -321,20 +333,23 @@
      frames)))
 
 (defn apply-clojure-func [func queries frame]
-  (apply
-   func
-   (map
-    (fn [query]
-      (instantiate
-       query
-       frame
-       (fn [expr _]
-         (throw (ex-info "Unknown variable: " {:var expr})))))
-    queries)))
+  (let [args (into [] (map
+                        (fn [query]
+                          (instantiate
+                           query
+                           frame
+                           (fn [expr _]
+                             (throw (ex-info "Unknown variable!" {'unknown-variable expr})))))
+                        queries))]
+    (try
+      (apply
+       func
+       args)
+      (catch Exception e (throw (ex-info "Clojure exception while applying Clojure predicate!", {'clojure-exception-message (ex-message e)}))))))
 
 (defn ev-clojure-pred-query [clojure-pred-query _ frames]
   (let [[func-str & queries] (get-clojure-pred-body clojure-pred-query)
-        func (eval (read-string func-str))]
+        func (try (eval (read-string func-str)) (catch Exception e (throw (ex-info "Cannot evaluate Clojure predictae!", {'clojure-predicate func-str, 'clojure-exception-message (ex-message e)}))))]
     (filter
      #(apply-clojure-func func queries %)
      frames)))
@@ -375,6 +390,11 @@
   (emit-prompt rule-added-prompt)
   (println))
 
+(defmethod display-result :error [error]
+  (println)
+  (emit-prompt (:results error))
+  (println))
+
 (defmethod display-result :query [response]
   (println)
   (letfn [(helper [response]
@@ -408,9 +428,18 @@
                :db db
                :results results})))
 
+(defn get-error-result [exception db]
+  {:type :error
+   :db db
+   :results (format "Query was executed with error: %s, info: %s" (ex-message exception) (ex-data exception))})
+
 (defn run-driver-loop [db frames]
   (emit-prompt input-prompt)
-  (let [response (ev (read-input) db frames)]
-    (display-result response)
+  (let [response (try (let [response (ev (read-input) db frames)]
+                        (display-result response)
+                        response)
+                      (catch Exception e (let [response (get-error-result e db)]
+                                           (display-result response)
+                                           response)))]
     (recur (:db response) (init-frames))))
 

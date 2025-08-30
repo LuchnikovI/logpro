@@ -28,4 +28,3 @@ A primary divergence from the reference SICP implementation concerns the `lisp-v
 
 1. Loops detection in deduction chains (see Exercise 4.67 from SICP) and memoization to prevent recomputing of already evaluated queries;
 2. The `and` special form performance optimization outlined in Exercise 4.76 of SICP;
-3. Propper errors handling.
