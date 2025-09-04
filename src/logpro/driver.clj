@@ -23,7 +23,7 @@
   (when (some seq iter-iter)
     (concat
      (keep first iter-iter)
-     (intrlv (map rest iter-iter)))))
+     (lazy-seq (intrlv (map rest iter-iter))))))
 
 ;; mapcat with interleaving
 (defn flatmap [func iter]
@@ -266,12 +266,25 @@
 (defn get-or-body [or-query]
   (rest or-query))
 
+(defn is-query? [is-query]
+  (and (sequential? is-query) (= (first is-query) 'is)))
+
+(defn get-is-lhs [is-query]
+  (if (not= (count is-query) 3)
+    (throw (ex-info "Bad IS query" {'is-query is-query}))
+    (nth is-query 1)))
+
+(defn get-is-rhs [is-query]
+  (if (not= (count is-query) 3)
+      (throw (ex-info "Bad IS query" {'is-query is-query}))
+      (nth is-query 2)))
+
 (defn not-query? [query]
   (and (sequential? query) (= (first query) 'not)))
 
 (defn get-not-body [query]
   (if (not= (count query) 2)
-    (throw (ex-info "Bad Not query!", {'not-query query}))
+    (throw (ex-info "Bad NOT query!", {'not-query query}))
     (nth query 1)))
 
 (defn clojure-pred-query? [query]
@@ -317,10 +330,12 @@
    frames)) 
 
 (defn ev-and-query [and-query db frames]
-  (reduce
-   #(ev-query %2 db %1)
-   frames
-   (get-and-body and-query)))
+  (let [queries (get-and-body and-query)]
+    (letfn [(helper [queries frames]
+              (if (empty? queries)
+                frames
+                (recur (rest queries) (ev-query (first queries) db frames))))]
+      (helper queries frames))))
 
 (defn ev-or-query [or-query db frames]
   (flatmap #(ev-query % db frames) (get-or-body or-query)))
@@ -331,6 +346,24 @@
      #(let [matches (ev-query query db (single-elem-stream %))]
         (empty? matches))
      frames)))
+
+(defn ev-is-query [is-query _ frames]
+  (let [lhs (get-is-lhs is-query)
+        rhs (get-is-rhs is-query)]
+    (keep (fn [frame]
+            (let [rhs-eval (eval
+                            (instantiate
+                             rhs
+                             frame
+                             (fn [var _]
+                               (throw
+                                (ex-info
+                                 "RHS of IS query must be fully instantiated!"
+                                 {'unbound-variable var})))))]
+              (if (variable? lhs)
+                (unify lhs rhs-eval frame)
+                (throw (ex-info "LHS of IS query must be a variable" {'lhs lhs})))))
+          frames)))
 
 (defn apply-clojure-func [func queries frame]
   (let [args (into [] (map
@@ -345,11 +378,11 @@
       (apply
        func
        args)
-      (catch Exception e (throw (ex-info "Clojure exception while applying Clojure predicate!", {'clojure-exception-message (ex-message e)}))))))
+      (catch Exception e (throw (ex-info "Clojure exception while applying Clojure predicate!", {'clojure-exception-message (ex-message e) 'arguments args}))))))
 
 (defn ev-clojure-pred-query [clojure-pred-query _ frames]
   (let [[func-str & queries] (get-clojure-pred-body clojure-pred-query)
-        func (try (eval (read-string func-str)) (catch Exception e (throw (ex-info "Cannot evaluate Clojure predictae!", {'clojure-predicate func-str, 'clojure-exception-message (ex-message e)}))))]
+        func (try (eval (read-string func-str)) (catch Exception e (throw (ex-info "Cannot evaluate Clojure predictae!", {'clojure-predicate (read-string func-str), 'clojure-exception-message (ex-message e)}))))]
     (filter
      #(apply-clojure-func func queries %)
      frames)))
@@ -359,6 +392,7 @@
     (and-query? query) (ev-and-query query db frames)
     (or-query? query) (ev-or-query query db frames)
     (not-query? query) (ev-not-query query db frames)
+    (is-query? query) (ev-is-query query db frames)
     (clojure-pred-query? query) (ev-clojure-pred-query query db frames)
     :else (ev-simple-query query db frames)))
 

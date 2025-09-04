@@ -22,7 +22,8 @@ The `./examples` directory contains sample databases, primarily derived from SIC
 
 ## Difference from the Scheme based implementation from SICP
 
-A primary divergence from the reference SICP implementation concerns the `lisp-value` special form. `lisp-value` special form is replaced by the `clojure-predicate` special form with similar semantics. The difference is that `clojure-predicate` takes a quoted Clojure form specifying a predicate, e.g. `"#(> % 0)"`, while the `lisp-value` takes unquoted Scheme form.
+1. A primary divergence from the reference SICP implementation concerns the `lisp-value` special form. `lisp-value` special form is replaced by the `clojure-predicate` special form with similar semantics. The difference is that `clojure-predicate` takes a quoted Clojure form specifying a predicate, e.g. `"#(> % 0)"`, while the `lisp-value` takes unquoted Scheme form;
+2. This implementation supports `is` special form which works as `is` from Prolog. `is` implements imperative arithmetics. Its first argument is a variable and the second argument is an arithmetic expression which can include variables. `is` evaluates second argument to a number and then unify its first argument (variable) with the obtained number. All the variables from the second argument must be instantiated by the time `is` is evaluated. See `examples/range` for a concrete example.
 
 ## TODO
 
