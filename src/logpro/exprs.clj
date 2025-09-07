@@ -77,13 +77,18 @@
 
 (defn get-conclusion [rule]
   (assert (>= (count rule) 2))
-  (nth rule 1))
+  (let [conclusion (nth rule 1)]
+    (if (sequential? conclusion)
+      conclusion
+      (throw (ex-info "Conclusion of a rule must be a compound expression!" {'conclusion conclusion})))))
 
-(defn get-rule-index [rule]
-  (let [head (first (get-conclusion rule))]
-    (if (and (not (variable? head)) (symbol? head))
-      head
-      nil)))
+(defn get-index [expr]
+  (if (compound-expr? expr)
+    (let [head (get-expr-head expr)]
+      (if (and (symbol? head) (not (variable? head)))
+        head
+        nil))
+    nil))
 
 (defn and-query? [query]
   (and (sequential? query) (= (first query) 'and)))

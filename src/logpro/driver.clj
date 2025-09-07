@@ -3,85 +3,14 @@
             [logpro.exprs :refer
              [variable? compound-expr? empty-expr? get-expr-head get-expr-tail
               vararg-head? get-varargs is-query? and-query? or-query? rule? get-and-body
-              get-or-body get-is-lhs get-is-rhs get-rule-index mangle-rule get-rule-body
+              get-or-body get-is-lhs get-is-rhs mangle-rule get-rule-body
               get-conclusion not-query? get-not-body clojure-pred-query? get-clojure-pred-body
               assertion? get-assertion-body unmangle-variable]]
             [logpro.frames :refer
              [get-binding insert-binding invalid-frame? invalid-frame
               filter-invalid-frames get-single-elem-stream empty-frames-stream
-              flatmap instantiate instantiate-stream init-frames-stream]]))
-
-;; data-base abstraction
-
-(defn get-pat-index [pat]
-  (if (compound-expr? pat)
-    (let [head (get-expr-head pat)]
-      (if (and (symbol? head) (not (variable? head)))
-        head
-        nil))
-    nil))
-
-(defn make-db []
-  {:all-assertions []
-   :indexed-assertions {}
-   :all-rules []
-   :indexed-rules {}})
-
-(defn fetch-assertions [db pat]
-  (if-let [idx (get-pat-index pat)]
-    ((:indexed-assertions db) idx)
-    (:all-assertions db)))
-
-(defn fetch-rules [db pat]
-  (if-let [idx (get-pat-index pat)]
-    ((:indexed-rules db) idx)
-    (:all-rules db)))
-
-(defn insert-or-conj [m idx elem]
-  (if (contains? m idx)
-    (update m idx #(conj % elem))
-    (assoc m idx [elem])))
-
-(defn add-to-all-assertions [db assertion]
-  (update db :all-assertions #(conj % assertion)))
-
-(defn add-to-indexed-assertions [db idx assertion]
-  (update
-   db
-   :indexed-assertions
-   #(insert-or-conj % idx assertion)))
-
-(defn add-assertion [db assertion]
-  (add-to-all-assertions
-   (if-let [idx (get-pat-index assertion)]
-     (add-to-indexed-assertions db idx assertion)
-     db)
-   assertion))
-
-(defn add-to-all-rules [db assertion]
-  (update db :all-rules #(conj % assertion)))
-
-(defn add-to-indexed-rules [db idx assertion]
-  (update
-   db
-   :indexed-rules
-   #(insert-or-conj % idx assertion)))
-
-(defn add-rule [db rule]
-  (add-to-all-rules
-   (if-let [idx (get-rule-index rule)]
-     (add-to-indexed-rules db idx rule)
-     db)
-   rule))
-
-(defn init-db [db [fst & rst]]
-  (if (nil? fst)
-    db
-    (init-db
-     (if (rule? fst)
-       (add-rule db fst)
-       (add-assertion db fst))
-     rst)))
+              flatmap instantiate instantiate-stream init-frames-stream]]
+            [logpro.db :refer [fetch-rules fetch-assertions add-rule add-assertion]]))
 
 ;; pattern matching
 
