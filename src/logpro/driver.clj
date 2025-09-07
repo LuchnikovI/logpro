@@ -1,9 +1,11 @@
 (ns logpro.driver
   (:require [clojure.edn :as edn]
-            [clojure.string :refer [last-index-of]]))
-
-(defn variable? [pat]
-  (and (symbol? pat) (= (first (str pat)) \?)))
+            [clojure.string :refer [last-index-of]]
+            [logpro.exprs :refer [variable?]]
+            [logpro.frames :refer
+             [get-binding insert-binding invalid-frame? invalid-frame
+              filter-invalid-frames get-single-elem-stream empty-frames-stream
+              flatmap instantiate instantiate-stream init-frames-stream]]))
 
 ;; mangling counter
 
@@ -13,26 +15,6 @@
   (let [curr-counter @mangling-counter]
     (swap! mangling-counter inc)
     curr-counter))
-
-;; stream helpers
-
-(defmacro single-elem-stream [expr]
-  `(lazy-seq (cons ~expr nil)))
-
-(defn intrlv [iter-iter]
-  (when (some seq iter-iter)
-    (concat
-     (keep first iter-iter)
-     (lazy-seq (intrlv (map rest iter-iter))))))
-
-;; mapcat with interleaving
-(defn flatmap [func iter]
-  (lazy-seq (->> iter
-                (map func)
-                intrlv)))
-
-(defn init-frames []
-  (single-elem-stream {}))
 
 ;; assertion abstraction
 
@@ -159,10 +141,10 @@
 (declare match)
 
 (defn extend-if-consistent [pat dat frame]
-  (let [val (frame pat)]
+  (let [val (get-binding frame pat)]
     (if val
       (match val dat frame)
-      (assoc frame pat dat))))
+      (insert-binding frame pat dat))))
 
 (defn match-seqs [pat dat frame]
   (cond
@@ -170,16 +152,16 @@
     (and (= (first pat) '.) (= (first dat) '.)) (match (nth pat 1) (nth dat 1) frame)
     (= (first pat) '.) (match (nth pat 1) dat frame)
     (= (first dat) '.) (match pat (nth dat 1) frame)
-    (or (empty? pat) (empty? dat)) nil
+    (or (empty? pat) (empty? dat)) invalid-frame
     :else (match (rest pat) (rest dat) (match (first pat) (first dat) frame))))
 
 (defn match [pat dat frame]
   (cond
-    (nil? frame) frame
+    (invalid-frame? frame) frame
     (variable? pat) (extend-if-consistent pat dat frame)
     (and (sequential? pat) (sequential? dat)) (match-seqs pat dat frame)
     (= pat dat) frame
-    :else nil))
+    :else invalid-frame))
 
 ;; unification
 
@@ -187,7 +169,7 @@
   (cond
     (variable? val) (if (= val var)
                       true
-                      (let [val-lhs (frame val)]
+                      (let [val-lhs (get-binding frame val)]
                         (if val-lhs
                           (depends-on? val-lhs var frame)
                           false)))
@@ -199,15 +181,15 @@
 (declare unify)
 
 (defn extend-if-possible [var val frame]
-  (let [val-lhs (frame var)]
+  (let [val-lhs (get-binding frame var)]
     (cond
       val-lhs (unify val-lhs val frame)
-      (variable? val) (let [val-rhs (frame val)]
+      (variable? val) (let [val-rhs (get-binding frame val)]
                         (if val-rhs
                           (unify var val-rhs frame)
-                          (assoc frame var val)))
-      (depends-on? val var frame) nil
-      :else (assoc frame var val))))
+                          (insert-binding frame var val)))
+      (depends-on? val var frame) invalid-frame
+      :else (insert-binding frame var val))))
 
 (defn unify-seqs [lhs-dat rhs-dat frame]
   (cond
@@ -215,42 +197,17 @@
     (and (= (first lhs-dat) '.) (= (first rhs-dat) '.)) (unify (nth lhs-dat 1) (nth rhs-dat 1) frame)
     (= (first lhs-dat) '.) (unify (nth lhs-dat 1) rhs-dat frame)
     (= (first rhs-dat) '.) (unify lhs-dat (nth rhs-dat 1) frame)
-    (or (empty? lhs-dat) (empty? rhs-dat)) nil
+    (or (empty? lhs-dat) (empty? rhs-dat)) invalid-frame
     :else (unify (rest lhs-dat) (rest rhs-dat) (unify (first lhs-dat) (first rhs-dat) frame))))
 
 (defn unify [p1 p2 frame]
   (cond
-    (nil? frame) frame
+    (invalid-frame? frame) frame
     (variable? p1) (extend-if-possible p1 p2 frame)
     (variable? p2) (extend-if-possible p2 p1 frame)
     (and (sequential? p1) (sequential? p2)) (unify-seqs p1 p2 frame)
     (= p1 p2) frame
-    :else nil))
-
-;; instantiation
-
-(defn instantiate [expr frame unbound-var-handler]
-  (letfn [(instantiate-seq [seqn]
-            (cond
-              (empty? seqn) '()
-              (= (first seqn) '.) (let [cdr (instantiate-main (nth seqn 1))]
-                                    (if (sequential? cdr)
-                                      cdr
-                                      (list '. cdr)))
-              :else (cons (instantiate-main (first seqn)) (instantiate-main (rest seqn)))))
-          (instantiate-main [expr]
-            (cond
-              (variable? expr) (let [var (frame expr)]
-                                 (if (nil? var)
-                                   (unbound-var-handler expr frame)
-                                   (instantiate-main var)))
-              (and (sequential? expr) (empty? expr)) '()
-              (sequential? expr) (instantiate-seq expr)
-              :else expr))]
-    (instantiate-main expr)))
-
-(defn instantiate-all [expr frames unbound-var-handler]
-  (map #(instantiate expr % unbound-var-handler) frames))
+    :else invalid-frame))
 
 ;; compound queries
 
@@ -300,25 +257,23 @@
 (declare ev-query)
 
 (defn find-assertions [query db frame]
-  (filter
-   (comp not nil?)
+  (filter-invalid-frames
    (map
     #(match query % frame)
     (fetch-assertions db query))))
 
 (defn apply-rules  [query db frame]
-  (filter
-   (comp not nil?)
+  (filter-invalid-frames
    (flatmap
     (fn [rule]
       (let [mangled-rule (mangle-rule rule)
             new-frame (unify query (get-conclusion mangled-rule) frame)]
-        (if (nil? new-frame)
-          '()
+        (if (invalid-frame? new-frame)
+          empty-frames-stream
           (let [pat (get-rule-body mangled-rule)]
             (if (nil? pat)
-              (single-elem-stream new-frame)
-              (ev-query pat db (single-elem-stream new-frame)))))))
+              (get-single-elem-stream new-frame)
+              (ev-query pat db (get-single-elem-stream new-frame)))))))
     (fetch-rules db query))))
 
 (defn ev-simple-query [query db frames]
@@ -343,7 +298,7 @@
 (defn ev-not-query [not-query db frames]
   (let [query (get-not-body not-query)]
     (filter
-     #(let [matches (ev-query query db (single-elem-stream %))]
+     #(let [matches (ev-query query db (get-single-elem-stream %))]
         (empty? matches))
      frames)))
 
@@ -457,7 +412,7 @@
                              :db (add-assertion db expr)
                              :results nil}))
       :else (let [frames (ev-query expr db frames)
-                  results (instantiate-all expr frames (fn [expr _] (unmangle-variable expr)))]
+                  results (instantiate-stream expr frames (fn [expr _] (unmangle-variable expr)))]
               {:type :query
                :db db
                :results results})))
@@ -465,15 +420,15 @@
 (defn get-error-result [exception db]
   {:type :error
    :db db
-   :results (format "Query was executed with error: %s, info: %s" (ex-message exception) (ex-data exception))})
+   :results (format "Query was executed with error: %s, data: %s" (ex-message exception) (ex-data exception))})
 
 (defn run-driver-loop [db frames]
   (emit-prompt input-prompt)
   (let [response (try (let [response (ev (read-input) db frames)]
-                        (display-result response)
-                        response)
+                         (display-result response)
+                         response)
                       (catch Exception e (let [response (get-error-result e db)]
                                            (display-result response)
                                            response)))]
-    (recur (:db response) (init-frames))))
+    (recur (:db response) (init-frames-stream))))
 
