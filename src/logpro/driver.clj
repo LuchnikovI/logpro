@@ -1,76 +1,23 @@
 (ns logpro.driver
   (:require [clojure.edn :as edn]
-            [clojure.string :refer [last-index-of]]
-            [logpro.exprs :refer [variable?]]
+            [logpro.exprs :refer
+             [variable? compound-expr? empty-expr? get-expr-head get-expr-tail
+              vararg-head? get-varargs is-query? and-query? or-query? rule? get-and-body
+              get-or-body get-is-lhs get-is-rhs get-rule-index mangle-rule get-rule-body
+              get-conclusion not-query? get-not-body clojure-pred-query? get-clojure-pred-body
+              assertion? get-assertion-body unmangle-variable]]
             [logpro.frames :refer
              [get-binding insert-binding invalid-frame? invalid-frame
               filter-invalid-frames get-single-elem-stream empty-frames-stream
               flatmap instantiate instantiate-stream init-frames-stream]]))
 
-;; mangling counter
-
-(def mangling-counter (atom 0))
-
-(defn get-mangling-counter! []
-  (let [curr-counter @mangling-counter]
-    (swap! mangling-counter inc)
-    curr-counter))
-
-;; assertion abstraction
-
-(defn assertion? [expr]
-  (and (sequential? expr) (= (first expr) 'assert!)))
-
-(defn get-assertion-body [assertion]
-  (if (not= (count assertion) 2)
-    (throw (ex-info "Bad assertion!", {'assertion assertion}))
-    (nth assertion 1)))
-
-;; rule abstraction
-
-(defn rule? [rule]
-  (and (sequential? rule) (= (first rule) 'rule)))
-
-(defn mangle-variable [variable postfix]
-  (symbol (str variable "-" postfix)))
-
-(defn unmangle-variable [variable]
-  (let [variable (str variable)
-        idx (last-index-of variable "-")]
-    (symbol (subs variable 0 idx))))
-
-(defn mangle-rule [rule]
-  (let [postfix (get-mangling-counter!)]
-    (letfn [(helper [rule]
-             (cond
-               (variable? rule) (mangle-variable rule postfix)
-               (= '() rule) '()
-               (sequential? rule) (cons (helper (first rule)) (helper (rest rule)))
-               :else rule))]
-      (helper rule))))
-
-(defn get-rule-body [rule]
-  (case (count rule)
-    1 (throw (ex-info "Bad rule!", {'rule rule}))
-    2 nil
-    3 (nth rule 2)))
-
-(defn get-conclusion [rule]
-  (nth rule 1))
-
-(defn get-rule-index [rule]
-  (let [fst (first (get-conclusion rule))]
-    (if (and (not (variable? fst)) (symbol? fst))
-      fst
-      nil)))
-
 ;; data-base abstraction
 
 (defn get-pat-index [pat]
-  (if (sequential? pat)
-    (let [fst (first pat)]
-      (if (and (symbol? fst) (not (variable? fst)))
-        fst
+  (if (compound-expr? pat)
+    (let [head (get-expr-head pat)]
+      (if (and (symbol? head) (not (variable? head)))
+        head
         nil))
     nil))
 
@@ -146,20 +93,22 @@
       (match val dat frame)
       (insert-binding frame pat dat))))
 
-(defn match-seqs [pat dat frame]
+(defn match-compounds [pat dat frame]
   (cond
-    (and (empty? pat) (empty? dat)) frame
-    (and (= (first pat) '.) (= (first dat) '.)) (match (nth pat 1) (nth dat 1) frame)
-    (= (first pat) '.) (match (nth pat 1) dat frame)
-    (= (first dat) '.) (match pat (nth dat 1) frame)
-    (or (empty? pat) (empty? dat)) invalid-frame
-    :else (match (rest pat) (rest dat) (match (first pat) (first dat) frame))))
+    (and (empty-expr? pat) (empty-expr? dat)) frame
+    (and (vararg-head? pat) (vararg-head? dat)) (match (get-varargs pat) (get-varargs dat) frame)
+    (vararg-head? pat) (match (get-varargs pat) dat frame)
+    (vararg-head? dat) (match pat (get-varargs dat) frame)
+    (or (empty-expr? pat) (empty-expr? dat)) invalid-frame
+    :else (->> frame
+               (match (get-expr-head pat) (get-expr-head dat))
+               (match (get-expr-tail pat) (get-expr-tail dat)))))
 
 (defn match [pat dat frame]
   (cond
     (invalid-frame? frame) frame
     (variable? pat) (extend-if-consistent pat dat frame)
-    (and (sequential? pat) (sequential? dat)) (match-seqs pat dat frame)
+    (and (compound-expr? pat) (compound-expr? dat)) (match-compounds pat dat frame)
     (= pat dat) frame
     :else invalid-frame))
 
@@ -173,9 +122,11 @@
                         (if val-lhs
                           (depends-on? val-lhs var frame)
                           false)))
-    (sequential? val) (if (empty? val)
-                        false
-                        (or (depends-on? (first val) var frame) (depends-on? (rest val) var frame)))
+    (compound-expr? val) (if (empty-expr? val)
+                           false
+                           (or
+                            (depends-on? (get-expr-head val) var frame)
+                            (depends-on? (get-expr-tail val) var frame)))
     :else false))
 
 (declare unify)
@@ -191,66 +142,28 @@
       (depends-on? val var frame) invalid-frame
       :else (insert-binding frame var val))))
 
-(defn unify-seqs [lhs-dat rhs-dat frame]
+(defn unify-compounds [lhs-dat rhs-dat frame]
   (cond
-    (and (empty? lhs-dat) (empty? rhs-dat)) frame
-    (and (= (first lhs-dat) '.) (= (first rhs-dat) '.)) (unify (nth lhs-dat 1) (nth rhs-dat 1) frame)
-    (= (first lhs-dat) '.) (unify (nth lhs-dat 1) rhs-dat frame)
-    (= (first rhs-dat) '.) (unify lhs-dat (nth rhs-dat 1) frame)
-    (or (empty? lhs-dat) (empty? rhs-dat)) invalid-frame
-    :else (unify (rest lhs-dat) (rest rhs-dat) (unify (first lhs-dat) (first rhs-dat) frame))))
+    (and (empty-expr? lhs-dat) (empty-expr? rhs-dat)) frame
+    (and (vararg-head? lhs-dat) (vararg-head? rhs-dat)) (unify
+                                                         (get-varargs lhs-dat)
+                                                         (get-varargs rhs-dat)
+                                                         frame)
+    (vararg-head? lhs-dat) (unify (get-varargs lhs-dat) rhs-dat frame)
+    (vararg-head? rhs-dat) (unify lhs-dat (get-varargs rhs-dat) frame)
+    (or (empty-expr? lhs-dat) (empty-expr? rhs-dat)) invalid-frame
+    :else (->> frame
+               (unify (get-expr-head lhs-dat) (get-expr-head rhs-dat))
+               (unify (get-expr-tail lhs-dat) (get-expr-tail rhs-dat)))))
 
 (defn unify [p1 p2 frame]
   (cond
     (invalid-frame? frame) frame
     (variable? p1) (extend-if-possible p1 p2 frame)
     (variable? p2) (extend-if-possible p2 p1 frame)
-    (and (sequential? p1) (sequential? p2)) (unify-seqs p1 p2 frame)
+    (and (compound-expr? p1) (compound-expr? p2)) (unify-compounds p1 p2 frame)
     (= p1 p2) frame
     :else invalid-frame))
-
-;; compound queries
-
-(defn and-query? [query]
-  (and (sequential? query) (= (first query) 'and)))
-
-(defn get-and-body [and-query]
-  (rest and-query))
-
-(defn or-query? [query]
-  (and (sequential? query) (= (first query) 'or)))
-
-(defn get-or-body [or-query]
-  (rest or-query))
-
-(defn is-query? [is-query]
-  (and (sequential? is-query) (= (first is-query) 'is)))
-
-(defn get-is-lhs [is-query]
-  (if (not= (count is-query) 3)
-    (throw (ex-info "Bad IS query" {'is-query is-query}))
-    (nth is-query 1)))
-
-(defn get-is-rhs [is-query]
-  (if (not= (count is-query) 3)
-      (throw (ex-info "Bad IS query" {'is-query is-query}))
-      (nth is-query 2)))
-
-(defn not-query? [query]
-  (and (sequential? query) (= (first query) 'not)))
-
-(defn get-not-body [query]
-  (if (not= (count query) 2)
-    (throw (ex-info "Bad NOT query!", {'not-query query}))
-    (nth query 1)))
-
-(defn clojure-pred-query? [query]
-  (and (sequential? query) (= (first query) 'clojure-predicate)))
-
-(defn get-clojure-pred-body [clojure-pred-query]
-  (if (< (count clojure-pred-query) 3)
-    (throw (ex-info "Bad Clojure predicate query!", {'clojure-preidcate-query clojure-pred-query}))
-    (rest clojure-pred-query)))
 
 ;; eval primitives
 

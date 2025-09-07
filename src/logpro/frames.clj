@@ -1,5 +1,8 @@
 (ns logpro.frames
-  (:require [logpro.exprs :refer [variable?]]))
+  (:require [logpro.exprs :refer
+             [variable? vararg-head? get-varargs empty-expr? compound-expr?
+              empty-expr make-pair-expression vararg-symbol extend-compound-expr
+              get-expr-head get-expr-tail]]))
 
 ;; single frame operations
 
@@ -41,24 +44,27 @@
 
 (declare instantiate)
 
-(defn instantiate-seq [seqn frame unbound-var-handler]
+(defn instantiate-compound [compound-expr frame unbound-var-handler]
   (cond
-    (empty? seqn) '()
-    (= (first seqn) '.) (let [cdr (instantiate (nth seqn 1) frame unbound-var-handler)]
-                          (if (sequential? cdr)
-                            cdr
-                            (list '. cdr)))
-    :else (cons
-           (instantiate (first seqn) frame unbound-var-handler)
-           (instantiate (rest seqn) frame unbound-var-handler))))
+    (empty-expr? compound-expr) empty-expr
+    (vararg-head? compound-expr) (let [varargs (instantiate
+                                                (get-varargs compound-expr)
+                                                frame
+                                                unbound-var-handler)]
+                                   (if (compound-expr? varargs)
+                                     varargs
+                                     (make-pair-expression vararg-symbol varargs)))
+    :else (extend-compound-expr
+           (instantiate (get-expr-head compound-expr) frame unbound-var-handler)
+           (instantiate (get-expr-tail compound-expr) frame unbound-var-handler))))
 
 (defn instantiate [expr frame unbound-var-handler]
   (cond
-    (variable? expr) (let [val (frame expr)]
+    (variable? expr) (let [val (get-binding frame expr)]
                        (if val
                          (recur val frame unbound-var-handler)
                          (unbound-var-handler expr frame)))
-    (sequential? expr) (instantiate-seq expr frame unbound-var-handler)
+    (compound-expr? expr) (instantiate-compound expr frame unbound-var-handler)
     :else expr))
 
 (defn instantiate-stream [expr frames unbound-var-handler]
