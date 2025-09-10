@@ -69,4 +69,3 @@
 
 (defn instantiate-stream [expr frames unbound-var-handler]
   (map #(instantiate expr % unbound-var-handler) frames))
-
