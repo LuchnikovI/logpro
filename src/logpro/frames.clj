@@ -6,6 +6,10 @@
 
 ;; single frame operations
 
+(def empty-constraints {}) ;; must be in constraints_engine.clj, but put here to not struggle with circ. deps.
+
+(def empty-frame {:constraints empty-constraints})
+
 (defn get-binding [frame var]
   (frame var))
 
@@ -16,6 +20,11 @@
 
 (def invalid-frame nil)
 
+(defn get-constraints [frame] (:constraints frame))
+
+(defn update-constraints [frame func]
+  (update frame :constraints func))
+
 ;; stream of frames operations
 
 (defmacro get-single-elem-stream [expr]
@@ -24,7 +33,7 @@
 (def empty-frames-stream '())
 
 (defn init-frames-stream []
-  (get-single-elem-stream {}))
+  (get-single-elem-stream empty-frame))
 
 (defn filter-invalid-frames [frames-stream]
   (filter (comp not invalid-frame?) frames-stream))

@@ -1,0 +1,35 @@
+;; Query input:
+;; Result:
+(son Adam Cain)
+(same Adam Adam)
+(grandson Adam Enoch)
+((grandson) Adam Enoch)
+((great grandson) Adam Irad)
+((great great grandson) Adam Mehujael)
+((great great great grandson) Adam Methushael)
+((great great great great grandson) Adam Lamech)
+((great great great great great grandson) Adam Jabal)
+((great great great great great grandson) Adam Jubal)
+;; End
+;; Query input:
+;; Result:
+((great great great great great grandson) Adam Jabal)
+((great great great great great grandson) Adam Jubal)
+;; End
+;; Query input:
+;; Result:
+(and ((grandson) Methushael Jubal) ((grandson) Methushael Jabal) (not (same Jubal Jabal)))
+(and ((great great grandson) Irad Jubal) ((great great grandson) Irad Jabal) (not (same Jubal Jabal)))
+(and ((great grandson) Mehujael Jubal) ((great grandson) Mehujael Jabal) (not (same Jubal Jabal)))
+(and ((great great great grandson) Enoch Jubal) ((great great great grandson) Enoch Jabal) (not (same Jubal Jabal)))
+(and ((great great great great grandson) Cain Jubal) ((great great great great grandson) Cain Jabal) (not (same Jubal Jabal)))
+(and ((great great great great great grandson) Adam Jubal) ((great great great great great grandson) Adam Jabal) (not (same Jubal Jabal)))
+(and ((great grandson) Mehujael Jabal) ((great grandson) Mehujael Jubal) (not (same Jabal Jubal)))
+(and ((grandson) Methushael Jabal) ((grandson) Methushael Jubal) (not (same Jabal Jubal)))
+(and ((great great grandson) Irad Jabal) ((great great grandson) Irad Jubal) (not (same Jabal Jubal)))
+(and ((great great great grandson) Enoch Jabal) ((great great great grandson) Enoch Jubal) (not (same Jabal Jubal)))
+(and ((great great great great grandson) Cain Jabal) ((great great great great grandson) Cain Jubal) (not (same Jabal Jubal)))
+(and ((great great great great great grandson) Adam Jabal) ((great great great great great grandson) Adam Jubal) (not (same Jabal Jubal)))
+;; End
+;; Query input:
+;; Bye!

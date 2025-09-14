@@ -1,0 +1,32 @@
+;; Query input:
+;; Result:
+(append-to-form () (1 2 3 4 5 6 7 8 9 10) (1 2 3 4 5 6 7 8 9 10))
+(append-to-form (1) (2 3 4 5 6 7 8 9 10) (1 2 3 4 5 6 7 8 9 10))
+(append-to-form (1 2) (3 4 5 6 7 8 9 10) (1 2 3 4 5 6 7 8 9 10))
+(append-to-form (1 2 3) (4 5 6 7 8 9 10) (1 2 3 4 5 6 7 8 9 10))
+(append-to-form (1 2 3 4) (5 6 7 8 9 10) (1 2 3 4 5 6 7 8 9 10))
+(append-to-form (1 2 3 4 5) (6 7 8 9 10) (1 2 3 4 5 6 7 8 9 10))
+(append-to-form (1 2 3 4 5 6) (7 8 9 10) (1 2 3 4 5 6 7 8 9 10))
+(append-to-form (1 2 3 4 5 6 7) (8 9 10) (1 2 3 4 5 6 7 8 9 10))
+(append-to-form (1 2 3 4 5 6 7 8) (9 10) (1 2 3 4 5 6 7 8 9 10))
+(append-to-form (1 2 3 4 5 6 7 8 9) (10) (1 2 3 4 5 6 7 8 9 10))
+(append-to-form (1 2 3 4 5 6 7 8 9 10) () (1 2 3 4 5 6 7 8 9 10))
+;; End
+;; Query input:
+;; Result:
+(append-to-form (1 2 3 4 5) (6 7 8 9 10) (1 2 3 4 5 6 7 8 9 10))
+;; End
+;; Query input:
+;; Result:
+(append-to-form (1 2 3 4 5) (6 7 8 9 10) (1 2 3 4 5 6 7 8 9 10))
+;; End
+;; Query input:
+;; Result:
+(and (append-to-form (a b c d e f) (g h i j k l) (a b c d e f g h i j k l)) (reverse (l k j) (j k l)))
+;; End
+;; Query input:
+;; Result:
+(reverse (5 4 3 2 1) (1 2 3 4 5))
+;; End
+;; Query input:
+;; Bye!

@@ -1,0 +1,5 @@
+(append-to-form ?x ?y (1 2 3 4 5 6 7 8 9 10))
+(append-to-form (1 2 3 4 5) ?y (1 2 3 4 5 6 7 8 9 10))
+(append-to-form ?x (6 7 8 9 10) (1 2 3 4 5 6 7 8 9 10))
+(and (append-to-form (a b c . ?x) (g h i . ?z) (a b c d e f g h i j k l)) (reverse ?d ?z))
+(reverse ?x (1 2 3 4 5))

@@ -1,0 +1,3 @@
+(?rel Adam ?p)
+((great great great great great grandson) ?p1 ?p2)
+(and ((. ?rel) ?p3 ?p1) ((. ?rel) ?p3 ?p2) (not (same ?p1 ?p2)))

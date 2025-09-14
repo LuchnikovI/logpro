@@ -1,0 +1,67 @@
+;; Query input:
+;; Result:
+(job (Bitdiddle Ben) (computer wizard))
+(job (Hacker Alyssa P) (computer programmer))
+(job (Fect Cy D) (computer programmer))
+(job (Tweakit Lem E) (computer technician))
+(job (Reasoner Louis) (computer programmer trainee))
+;; End
+;; Query input:
+;; Result:
+(job (Bitdiddle Ben) (computer wizard))
+(job (Hacker Alyssa P) (computer programmer))
+(job (Fect Cy D) (computer programmer))
+(job (Tweakit Lem E) (computer technician))
+;; End
+;; Query input:
+;; Result:
+(and (job (Bitdiddle Ben) (computer wizard)) (salary (Bitdiddle Ben) 60000))
+(and (job (Hacker Alyssa P) (computer programmer)) (salary (Hacker Alyssa P) 40000))
+(and (job (Fect Cy D) (computer programmer)) (salary (Fect Cy D) 35000))
+(and (job (Tweakit Lem E) (computer technician)) (salary (Tweakit Lem E) 25000))
+(and (job (Reasoner Louis) (computer programmer trainee)) (salary (Reasoner Louis) 30000))
+;; End
+;; Query input:
+;; Result:
+(wheel (Bitdiddle Ben))
+(wheel (Warbucks Oliver))
+(wheel (Warbucks Oliver))
+(wheel (Warbucks Oliver))
+(wheel (Warbucks Oliver))
+;; End
+;; Query input:
+;; Result:
+(big-shot (Bitdiddle Ben))
+(big-shot (Warbucks Oliver))
+(big-shot (Scrooge Eben))
+;; End
+;; Query input:
+;; Result:
+(lives-near (Fect Cy D) (Hacker Alyssa P))
+(lives-near (Aull DeWitt) (Bitdiddle Ben))
+(lives-near (Bitdiddle Ben) (Reasoner Louis))
+(lives-near (Aull DeWitt) (Reasoner Louis))
+;; End
+;; Query input:
+;; Result:
+(meeting-time (Bitdiddle Ben) (Wednesday 3 pm))
+(meeting-time ?person (Wednesday 4 pm))
+(meeting-time (Hacker Alyssa P) (Wednesday 3 pm))
+(meeting-time (Fect Cy D) (Wednesday 3 pm))
+(meeting-time (Tweakit Lem E) (Wednesday 3 pm))
+(meeting-time (Reasoner Louis) (Wednesday 3 pm))
+;; End
+;; Query input:
+;; Result:
+(and (can-replace (Aull DeWitt) (Warbucks Oliver)) (salary (Aull DeWitt) 25000) (salary (Warbucks Oliver) 150000) (clojure-predicate > 150000 25000))
+(and (can-replace (Fect Cy D) (Hacker Alyssa P)) (salary (Fect Cy D) 35000) (salary (Hacker Alyssa P) 40000) (clojure-predicate > 40000 35000))
+;; End
+;; Query input:
+;; Result:
+(outranked-by (Reasoner Louis) (Hacker Alyssa P))
+(outranked-by (Reasoner Louis) (Bitdiddle Ben))
+(outranked-by (Reasoner Louis) (Warbucks Oliver))
+;; End
+;; Query input:
+;; Bye!
+

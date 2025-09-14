@@ -9,6 +9,8 @@
 (son Ada Jabal)
 (son Ada Jubal)
 
+(rule (same ?x ?x))
+
 (rule (grandson ?g ?s)
   (and (son ?g ?f) (son ?f ?s)))
 

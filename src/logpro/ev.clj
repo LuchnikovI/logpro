@@ -117,27 +117,18 @@
     (clojure-pred-query? query) (ev-clojure-pred-query query db frames)
     :else (ev-simple-query query db frames)))
 
-(defn ev-can-throw [expr db frames]
-    (cond
-      (assertion? expr) (let [assertion-body (get-assertion-body expr)]
-                          (if (rule? assertion-body)
-                            {:type :rule-added
-                             :db (add-rule db expr)}
-                            {:type :assertion-added
-                             :db (add-assertion db expr)}))
-      :else (let [frames (ev-query expr db frames)
-                  results (instantiate-stream expr frames (fn [expr _] (unmangle-variable expr)))]
-              {:type :query
-               :db db
-               :results results})))
-
-(defn get-error-result [exception db]
-  {:type :error
-   :db db
-   :error (format "Prompt was executed with error: %s, data: %s" (ex-message exception) (ex-data exception))})
-
-(defn ev [delayed-expr db frames]
-  (try (ev-can-throw @delayed-expr db frames)
-       (catch Exception e
-         (get-error-result e db))))
+(defn ev [expr db frames]
+  (cond
+    (nil? expr) {:type :end-of-file}
+    (assertion? expr) (let [assertion-body (get-assertion-body expr)]
+                        (if (rule? assertion-body)
+                          {:type :rule-added
+                           :db (add-rule db expr)}
+                          {:type :assertion-added
+                           :db (add-assertion db expr)}))
+    :else (let [frames (ev-query expr db frames)
+                results (instantiate-stream expr frames (fn [expr _] (unmangle-variable expr)))]
+            {:type :query
+             :db db
+             :results results})))
 

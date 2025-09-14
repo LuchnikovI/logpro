@@ -8,8 +8,8 @@
 (defn read-data [path]
   (edn/read-string (str "(" (slurp path) ")")))
 
-(defn -main [path & _]
-  (let [db (try (init-db empty-db (read-data path))
+(defn -main [db-path]
+  (let [db (try (init-db empty-db (read-data db-path))
                 (catch Exception e (do
                                      (println (format "Bad database: %s" (ex-message e)))
                                      (System/exit 1))))]
