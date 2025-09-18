@@ -6,8 +6,11 @@
             [logpro.exprs :refer [mangle-rule get-conclusion get-rule-body get-and-body get-or-body
                                   get-not-body get-is-lhs get-is-rhs variable? get-clojure-pred-body
                                   clojure-pred-query? not-query? is-query? and-query? or-query?
-                                  assertion? rule? get-assertion-body unmangle-variable]]
-            [logpro.unification :refer [unify]]))
+                                  assertion? rule? get-assertion-body unmangle-variable eq-query?
+                                  get-eq-lhs get-eq-rhs]]
+            [logpro.unification :refer [unify]]
+            [logpro.constraints-engine :refer [add-equality-constraint]]
+            [clojure.pprint :refer [pprint]]))
 
 (defn find-assertions [query db frame]
   (filter-invalid-frames
@@ -74,6 +77,13 @@
            (throw (ex-info "LHS of IS query must be a variable" {'lhs lhs})))))
      frames)))
 
+(defn ev-eq-query [eq-query _ frames]
+  (let [lhs (get-eq-lhs eq-query)
+        rhs (get-eq-rhs eq-query)]
+    (keep
+     #(add-equality-constraint % lhs rhs)
+     frames)))
+
 (defn handle-unknown-var [var _]
   (throw (ex-info "Unknown variable!" {'unknown-variable var})))
 
@@ -115,6 +125,7 @@
     (not-query? query) (ev-not-query query db frames)
     (is-query? query) (ev-is-query query db frames)
     (clojure-pred-query? query) (ev-clojure-pred-query query db frames)
+    (eq-query? query) (ev-eq-query query db frames)
     :else (ev-simple-query query db frames)))
 
 (defn ev [expr db frames]

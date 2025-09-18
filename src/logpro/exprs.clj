@@ -130,3 +130,31 @@
   (if (< (count clojure-pred-query) 3)
     (throw (ex-info "Bad Clojure predicate query!", {'clojure-preidcate-query clojure-pred-query}))
     (rest clojure-pred-query)))
+
+(defn eq-query? [query]
+  (and (sequential? query) (= (first query) 'eq)))
+
+(defn get-eq-lhs [eq-query]
+  (if (not= (count eq-query) 3)
+    (throw (ex-info "Bad EQ query" {'eq-query eq-query}))
+    (nth eq-query 1)))
+
+(defn get-eq-rhs [eq-query]
+  (if (not= (count eq-query) 3)
+      (throw (ex-info "Bad IS query" {'eq-query eq-query}))
+      (nth eq-query 2)))
+
+(def numerical-ops #{'+ '- '/ '*})
+
+(def numerical-literal? number?)
+
+(defn numerical-op? [expr]
+  (and (compound-expr? expr)
+       (not (empty-expr? expr))
+       (numerical-ops (get-expr-head expr))))
+
+(defn numerical-expr? [expr]
+  (or (numerical-literal? expr) (numerical-op? expr)))
+
+(defn make-subtract-expression [lhs rhs]
+  (list '- lhs rhs))

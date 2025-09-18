@@ -1,0 +1,3 @@
+(rule (fail ?x ?y)
+  (and (eq (+ ?x ?y) 2)
+       (eq (- ?x ?y) 0)))

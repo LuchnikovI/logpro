@@ -2,25 +2,41 @@
   (:require [logpro.exprs :refer
              [variable? vararg-head? get-varargs empty-expr? compound-expr?
               empty-expr make-pair-expression vararg-symbol extend-compound-expr
-              get-expr-head get-expr-tail]]))
+              get-expr-head get-expr-tail numerical-literal?]]))
 
 ;; single frame operations
 
 (def empty-constraints {}) ;; must be in constraints_engine.clj, but put here to not struggle with circ. deps.
 
-(def empty-frame {:constraints empty-constraints})
+(def empty-propagated-vars {}) ;; must be in constraints_engine.clj, but put here to not struggle with circ. deps.
+
+(def empty-frame {:constraints empty-constraints :propagated-variables empty-propagated-vars})
 
 (defn get-binding [frame var]
   (frame var))
 
+;; TODO: fix circular deps in a normal way
+(defn insert-to-constraints [frame var val]
+  (if (or (variable? val) (numerical-literal? val))
+    ((requiring-resolve 'logpro.constraints-engine/add-equality-constraint) frame var val)
+    frame))
+
 (defn insert-binding [frame var val]
-  (assoc frame var val))
+  (-> frame
+   (assoc var val)
+   (insert-to-constraints var val)))
 
 (defn invalid-frame? [frame] (nil? frame))
 
 (def invalid-frame nil)
 
 (defn get-constraints [frame] (:constraints frame))
+
+(defn get-propagated-var [frame var]
+  ((:propagated-variables frame) var))
+
+(defn propagate-var [frame var val]
+  (update frame :propagated-variables #(assoc % var val)))
 
 (defn update-constraints [frame func]
   (update frame :constraints func))
