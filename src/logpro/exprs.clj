@@ -144,6 +144,24 @@
       (throw (ex-info "Bad IS query" {'eq-query eq-query}))
       (nth eq-query 2)))
 
+;; TODO: type checking for rnage parameters
+
+(defn range-query? [range-query]
+  (and (sequential? range-query) (= (first range-query) 'range)))
+
+(defn get-var [range-query]
+  (if (< (count range-query) 2) (throw (ex-info "Variables is not specified in rnage query!" {'range-query range-query}))
+      (nth range-query 1)))
+
+(defn get-start [range-query]
+  (nth range-query 2 0))
+
+(defn get-end [range-query]
+  (nth range-query 3 'inf))
+
+(defn get-step [rnage-query]
+  (nth rnage-query 4 1))
+
 (def numerical-ops #{'+ '- '/ '*})
 
 (def numerical-literal? number?)

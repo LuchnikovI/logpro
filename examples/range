@@ -1,8 +1,4 @@
-(rule (range ?low ?high ?step ())
-  (clojure-predicate ">" ?low ?high))
-
-(rule (range ?low ?high ?step (?low . ?rest))
-  (and
-    (clojure-predicate "<=" ?low ?high)
-    (is ?new-low (+ ?low ?step))
-    (range ?new-low ?high ?step ?rest)))
+(rule (sum ?x ?y ?sum)
+ (and (eq ?sum (+ ?x ?y))
+      (range ?x 0 100)
+      (range ?y 0 100)))

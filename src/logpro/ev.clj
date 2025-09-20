@@ -7,10 +7,10 @@
                                   get-not-body get-is-lhs get-is-rhs variable? get-clojure-pred-body
                                   clojure-pred-query? not-query? is-query? and-query? or-query?
                                   assertion? rule? get-assertion-body unmangle-variable eq-query?
-                                  get-eq-lhs get-eq-rhs]]
+                                  get-eq-lhs get-eq-rhs range-query? get-var get-start get-step
+                                  get-end]]
             [logpro.unification :refer [unify]]
-            [logpro.constraints-engine :refer [add-equality-constraint]]
-            [clojure.pprint :refer [pprint]]))
+            [logpro.constraints-engine :refer [add-equality-constraint]]))
 
 (defn find-assertions [query db frame]
   (filter-invalid-frames
@@ -84,6 +84,24 @@
      #(add-equality-constraint % lhs rhs)
      frames)))
 
+(defn get-values-range [start end step]
+  (case end
+    inf (map #(+ start (* step %)) (range))
+    (range start end step)))
+
+(defn match-var-with-values [var values frame]
+  (map #(match var % frame) values))
+
+(defn ev-range-query [range-query _ frames]
+  (let [var (get-var range-query)
+        start (get-start range-query)
+        end (get-end range-query)
+        step (get-step range-query)
+        values (get-values-range start end step)]
+    (flatmap
+     #(match-var-with-values var values %)
+     frames)))
+
 (defn handle-unknown-var [var _]
   (throw (ex-info "Unknown variable!" {'unknown-variable var})))
 
@@ -126,6 +144,7 @@
     (is-query? query) (ev-is-query query db frames)
     (clojure-pred-query? query) (ev-clojure-pred-query query db frames)
     (eq-query? query) (ev-eq-query query db frames)
+    (range-query? query) (ev-range-query query db frames)
     :else (ev-simple-query query db frames)))
 
 (defn ev [expr db frames]

@@ -1,0 +1,8 @@
+(rule (domain ?low ?high ?step ())
+  (clojure-predicate ">" ?low ?high))
+
+(rule (domain ?low ?high ?step (?low . ?rest))
+  (and
+    (clojure-predicate "<=" ?low ?high)
+    (is ?new-low (+ ?low ?step))
+    (domain ?new-low ?high ?step ?rest)))
