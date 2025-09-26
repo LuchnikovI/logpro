@@ -54,3 +54,12 @@
     (and (compound-expr? p1) (compound-expr? p2)) (unify-compounds p1 p2 frame)
     (= p1 p2) frame
     :else invalid-frame))
+
+(defn unify-with-every [p ps frame]
+  (cond
+    (variable? ps) (if-let [ps-deref (get-binding frame ps)]
+                     (unify-with-every p ps-deref frame)
+                     invalid-frame)
+    (compound-expr? ps) (map #(unify p % frame) ps)
+    :else invalid-frame))
+    

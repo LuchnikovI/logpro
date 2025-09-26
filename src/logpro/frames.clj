@@ -23,8 +23,8 @@
 
 (defn insert-binding [frame var val]
   (-> frame
-   (assoc var val)
-   (insert-to-constraints var val)))
+      (assoc var val)
+      (insert-to-constraints var val)))
 
 (defn invalid-frame? [frame] (nil? frame))
 

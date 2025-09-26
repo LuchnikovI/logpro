@@ -1,0 +1,9 @@
+(rule (number ?x)
+ (range ?x 0 10 1))
+
+(rule (collect-all ?lst)
+ ;; first argument is a teamplate, it is being instantiated in a frame
+ ;; which is result of a unification, second argument is a query, which
+ ;; is being unified with every element of a third argument, which
+ ;; must be a list or a variable bound to a list
+ (collect ?x (number ?x) ?lst))

@@ -46,17 +46,35 @@
 
 (def mangling-counter (atom 0))
 
+(def ids (atom {}))
+
+(defn get-id! [smthng]
+  (if-let [id (@ids smthng)]
+    id
+    (let [new-id (count @ids)]
+      (swap! ids assoc smthng new-id)
+      new-id)))
+
 (defn get-mangling-counter! []
   (let [curr-counter @mangling-counter]
     (swap! mangling-counter inc)
     curr-counter))
 
+(defn attach-postfix [variable sep postfix]
+  (symbol (str variable sep postfix)))
+
 (defn mangle-variable [variable postfix]
-  (symbol (str variable "-" postfix)))
+  (attach-postfix variable "@" postfix))
+
+(defn get-mangler [variable]
+  (let [variable (str variable)
+        variable-len (count variable)]
+    (when-let [idx (last-index-of variable "@")]
+      (subs variable (inc idx) variable-len))))
 
 (defn unmangle-variable [variable]
   (let [variable (str variable)
-        idx (last-index-of variable "-")]
+        idx (last-index-of variable "@")]
     (symbol (subs variable 0 idx))))
 
 (defn mangle-rule [rule]
@@ -144,10 +162,41 @@
       (throw (ex-info "Bad IS query" {'eq-query eq-query}))
       (nth eq-query 2)))
 
+(defn in-query? [query]
+  (and (sequential? query) (= (first query) 'in)))
+
+(defn get-in-lhs [in-query]
+  (if (not= (count in-query) 3)
+      (throw (ex-info "Bad IN query" {'in-query in-query}))
+      (nth in-query 1)))
+
+(defn get-in-rhs [in-query]
+  (if (not= (count in-query) 3)
+      (throw (ex-info "Bad IN query" {'in-query in-query}))
+      (nth in-query 2)))
+
+(defn collect-query? [query]
+  (and (sequential? query) (= (first query) 'collect)))
+
+(defn get-template [collect-query]
+  (if (not= (count collect-query) 4)
+      (throw (ex-info "Bad COLLECT query" {'collect-query collect-query}))
+      (nth collect-query 1)))
+
+(defn get-query [collect-query]
+  (if (not= (count collect-query) 4)
+      (throw (ex-info "Bad COLLECT query" {'collect-query collect-query}))
+      (nth collect-query 2)))
+
+(defn get-bag [collect-query]
+  (if (not= (count collect-query) 4)
+      (throw (ex-info "Bad COLLECT query" {'collect-query collect-query}))
+      (nth collect-query 3)))
+
 ;; TODO: type checking for rnage parameters
 
-(defn range-query? [range-query]
-  (and (sequential? range-query) (= (first range-query) 'range)))
+(defn range-query? [query]
+  (and (sequential? query) (= (first query) 'range)))
 
 (defn get-var [range-query]
   (if (< (count range-query) 2) (throw (ex-info "Variables is not specified in rnage query!" {'range-query range-query}))
@@ -162,6 +211,19 @@
 (defn get-step [rnage-query]
   (nth rnage-query 4 1))
 
+(defn unify-query? [query]
+  (and (sequential? query) (= (first query) '=)))
+
+(defn get-unify-lhs [unify-query]
+  (if (not= (count unify-query) 3)
+      (throw (ex-info "Bad unify query" {'unify-query unify-query}))
+      (nth unify-query 1)))
+
+(defn get-unify-rhs [unify-query]
+  (if (not= (count unify-query) 3)
+      (throw (ex-info "Bad unify query" {'unify-query unify-query}))
+      (nth unify-query 2)))
+
 (def numerical-ops #{'+ '- '/ '*})
 
 (def numerical-literal? number?)
@@ -170,9 +232,6 @@
   (and (compound-expr? expr)
        (not (empty-expr? expr))
        (numerical-ops (get-expr-head expr))))
-
-(defn numerical-expr? [expr]
-  (or (numerical-literal? expr) (numerical-op? expr)))
 
 (defn make-subtract-expression [lhs rhs]
   (list '- lhs rhs))

@@ -4,12 +4,15 @@
             [logpro.matching :refer [match]]
             [logpro.db :refer [fetch-assertions fetch-rules add-assertion add-rule]]
             [logpro.exprs :refer [mangle-rule get-conclusion get-rule-body get-and-body get-or-body
-                                  get-not-body get-is-lhs get-is-rhs variable? get-clojure-pred-body
+                                  get-not-body get-is-lhs get-is-rhs get-clojure-pred-body
                                   clojure-pred-query? not-query? is-query? and-query? or-query?
                                   assertion? rule? get-assertion-body unmangle-variable eq-query?
                                   get-eq-lhs get-eq-rhs range-query? get-var get-start get-step
-                                  get-end]]
-            [logpro.unification :refer [unify]]
+                                  get-end in-query? get-in-lhs get-in-rhs mangle-variable
+                                  get-id! get-query get-bag get-template collect-query?
+                                  get-mangler attach-postfix get-unify-lhs get-unify-rhs
+                                  unify-query?]]
+            [logpro.unification :refer [unify unify-with-every]]
             [logpro.constraints-engine :refer [add-equality-constraint]]))
 
 (defn find-assertions [query db frame]
@@ -72,9 +75,7 @@
     (keep
      (fn [frame]
        (let [rhs-eval (instantiate-arithmetic-expr rhs frame)]
-         (if (variable? lhs)
-           (unify lhs rhs-eval frame)
-           (throw (ex-info "LHS of IS query must be a variable" {'lhs lhs})))))
+         (unify lhs rhs-eval frame)))
      frames)))
 
 (defn ev-eq-query [eq-query _ frames]
@@ -136,8 +137,51 @@
      #(apply-clojure-func func queries %)
      frames)))
 
+(defn ev-in-query [in-query _ frames]
+  (let [lhs (get-in-lhs in-query)
+        rhss (get-in-rhs in-query)]
+    (filter (comp not invalid-frame?)
+     (flatmap
+      #(unify-with-every lhs rhss %)
+      frames))))
+
+(defn attach-query-id! [var query-inst]
+  (let [id (get-id! query-inst)]
+    (if-let [mangler (get-mangler var)]
+      (-> var
+          unmangle-variable
+          (attach-postfix "-" id)
+          (mangle-variable mangler))
+      (attach-postfix var "-" id))))
+
+(defn instantiate-query [query frame]
+  (instantiate query frame (fn [expr _] (unmangle-variable expr))))
+
+(defn instantiate-template [template frame query]
+  (let [inst-query (instantiate-query query frame)]
+    (instantiate template frame (fn [var _] (attach-query-id! var inst-query)))))
+
+(defn ev-to-list [template query bag db frame]
+  (as-> (ev-query query db [frame]) $
+        (map #(instantiate-template template % query) $)
+        (unify bag $ frame)))
+
+(defn ev-collect-query [collect-query db frames]
+  (let [template (get-template collect-query)
+        query (get-query collect-query)
+        bag (get-bag collect-query)]
+    (keep
+     #(ev-to-list template query bag db %)
+     frames)))
+
+(defn ev-unify-query [query _ frames]
+  (let [lhs (get-unify-lhs query)
+        rhs (get-unify-rhs query)]
+    (map #(unify lhs rhs %) frames)))
+
 (defn ev-query [query db frames]
   (cond
+    (unify-query? query) (ev-unify-query query db frames)
     (and-query? query) (ev-and-query query db frames)
     (or-query? query) (ev-or-query query db frames)
     (not-query? query) (ev-not-query query db frames)
@@ -145,6 +189,8 @@
     (clojure-pred-query? query) (ev-clojure-pred-query query db frames)
     (eq-query? query) (ev-eq-query query db frames)
     (range-query? query) (ev-range-query query db frames)
+    (in-query? query) (ev-in-query query db frames)
+    (collect-query? query) (ev-collect-query query db frames)
     :else (ev-simple-query query db frames)))
 
 (defn ev [expr db frames]

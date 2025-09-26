@@ -1,0 +1,7 @@
+(rule (common-element ?x ?y ?ce)
+  (and (in ?ce ?x)
+       (in ?ce ?y)))
+
+;; May try to query (common-element (1 a b 4 c d 3) (d f g 1 b w q) ?ce),
+;; ?ce will iterate over all common elements
+ 
