@@ -33,16 +33,17 @@
             {'vararg-symbol vararg-symbol
              'after-vararg-symbol (rest expr)}))))
 
-(defn assertion? [expr]
-  (and (sequential? expr) (= (first expr) 'assert!)))
+(defn headed-form? [head expr]
+  (and (compound-expr? expr) (= (first expr) head)))
+
+(defn assertion? [expr] (headed-form? 'assert! expr))
 
 (defn get-assertion-body [assertion]
   (if (not= (count assertion) 2)
     (throw (ex-info "Bad assertion!", {'assertion assertion}))
     (nth assertion 1)))
 
-(defn rule? [rule]
-  (and (sequential? rule) (= (first rule) 'rule)))
+(defn rule? [expr] (headed-form? 'rule expr))
 
 (def mangling-counter (atom 0))
 
@@ -83,7 +84,7 @@
              (cond
                (variable? rule) (mangle-variable rule postfix)
                (= '() rule) '()
-               (sequential? rule) (cons (helper (first rule)) (helper (rest rule)))
+               (compound-expr? rule) (cons (helper (first rule)) (helper (rest rule)))
                :else rule))]
       (helper rule))))
 
@@ -96,7 +97,7 @@
 (defn get-conclusion [rule]
   (assert (>= (count rule) 2))
   (let [conclusion (nth rule 1)]
-    (if (sequential? conclusion)
+    (if (compound-expr? conclusion)
       conclusion
       (throw (ex-info "Conclusion of a rule must be a compound expression!" {'conclusion conclusion})))))
 
@@ -108,20 +109,17 @@
         nil))
     nil))
 
-(defn and-query? [query]
-  (and (sequential? query) (= (first query) 'and)))
+(defn and-query? [query] (headed-form? 'and query))
 
 (defn get-and-body [and-query]
   (rest and-query))
 
-(defn or-query? [query]
-  (and (sequential? query) (= (first query) 'or)))
+(defn or-query? [query] (headed-form? 'or query))
 
 (defn get-or-body [or-query]
   (rest or-query))
 
-(defn is-query? [is-query]
-  (and (sequential? is-query) (= (first is-query) 'is)))
+(defn is-query? [query] (headed-form? 'is query))
 
 (defn get-is-lhs [is-query]
   (if (not= (count is-query) 3)
@@ -133,24 +131,21 @@
       (throw (ex-info "Bad IS query" {'is-query is-query}))
       (nth is-query 2)))
 
-(defn not-query? [query]
-  (and (sequential? query) (= (first query) 'not)))
+(defn not-query? [query] (headed-form? 'not query))
 
 (defn get-not-body [query]
   (if (not= (count query) 2)
     (throw (ex-info "Bad NOT query!", {'not-query query}))
     (nth query 1)))
 
-(defn clojure-pred-query? [query]
-  (and (sequential? query) (= (first query) 'clojure-predicate)))
+(defn clojure-pred-query? [query] (headed-form? 'clojure-predicate query))
 
 (defn get-clojure-pred-body [clojure-pred-query]
   (if (< (count clojure-pred-query) 3)
     (throw (ex-info "Bad Clojure predicate query!", {'clojure-preidcate-query clojure-pred-query}))
     (rest clojure-pred-query)))
 
-(defn eq-query? [query]
-  (and (sequential? query) (= (first query) 'eq)))
+(defn eq-query? [query] (headed-form? 'eq query))
 
 (defn get-eq-lhs [eq-query]
   (if (not= (count eq-query) 3)
@@ -162,8 +157,7 @@
       (throw (ex-info "Bad IS query" {'eq-query eq-query}))
       (nth eq-query 2)))
 
-(defn in-query? [query]
-  (and (sequential? query) (= (first query) 'in)))
+(defn in-query? [query] (headed-form? 'in query))
 
 (defn get-in-lhs [in-query]
   (if (not= (count in-query) 3)
@@ -175,8 +169,7 @@
       (throw (ex-info "Bad IN query" {'in-query in-query}))
       (nth in-query 2)))
 
-(defn collect-query? [query]
-  (and (sequential? query) (= (first query) 'collect)))
+(defn collect-query? [query] (headed-form? 'collect query))
 
 (defn get-template [collect-query]
   (if (not= (count collect-query) 4)
@@ -195,8 +188,7 @@
 
 ;; TODO: type checking for rnage parameters
 
-(defn range-query? [query]
-  (and (sequential? query) (= (first query) 'range)))
+(defn range-query? [query] (headed-form? 'range query))
 
 (defn get-var [range-query]
   (if (< (count range-query) 2) (throw (ex-info "Variables is not specified in rnage query!" {'range-query range-query}))
@@ -211,8 +203,7 @@
 (defn get-step [rnage-query]
   (nth rnage-query 4 1))
 
-(defn unify-query? [query]
-  (and (sequential? query) (= (first query) '=)))
+(defn unify-query? [query] (headed-form? '= query))
 
 (defn get-unify-lhs [unify-query]
   (if (not= (count unify-query) 3)
