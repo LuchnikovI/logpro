@@ -63,26 +63,32 @@
         (empty? matches))
      frames)))
 
-(defn handle-unbounds-in-arithmetic-expr [var _]
+(defn handle-unbounds-in-is-rhs [var _]
   (throw (ex-info "RHS of IS query must be fully instantiated!" {'unbound-variable var})))
 
-(defn instantiate-arithmetic-expr [expr frame]
-  (eval (instantiate expr frame handle-unbounds-in-arithmetic-expr)))
+(defn instantiate-and-eval-is-rhs [expr frame]
+  (eval (instantiate expr frame handle-unbounds-in-is-rhs)))
 
 (defn ev-is-query [is-query _ frames]
   (let [lhs (get-is-lhs is-query)
         rhs (get-is-rhs is-query)]
     (keep
      (fn [frame]
-       (let [rhs-eval (instantiate-arithmetic-expr rhs frame)]
+       (let [rhs-eval (instantiate-and-eval-is-rhs rhs frame)]
          (unify lhs rhs-eval frame)))
      frames)))
+
+(defn instantiate-arithmetic-expr [expr frame]
+  (instantiate expr frame (fn [var _] var)))
 
 (defn ev-eq-query [eq-query _ frames]
   (let [lhs (get-eq-lhs eq-query)
         rhs (get-eq-rhs eq-query)]
     (keep
-     #(add-equality-constraint % lhs rhs)
+     #(add-equality-constraint
+       %
+       (instantiate-arithmetic-expr lhs %)
+       (instantiate-arithmetic-expr rhs %))
      frames)))
 
 (defn get-values-range [start end step]
