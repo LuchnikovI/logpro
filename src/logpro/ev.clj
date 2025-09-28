@@ -98,14 +98,25 @@
 (defn match-var-with-values [var values frame]
   (map #(match var % frame) values))
 
+(defn instantiate-range-param [expr frame]
+  (instantiate expr frame (fn [expr _]
+                            (throw
+                             (ex-info
+                              "Range bounds must be fully instantiated"
+                              {'unbound-variable expr})))))
+
 (defn ev-range-query [range-query _ frames]
   (let [var (get-var range-query)
         start (get-start range-query)
         end (get-end range-query)
-        step (get-step range-query)
-        values (get-values-range start end step)]
+        step (get-step range-query)]
     (flatmap
-     #(match-var-with-values var values %)
+     (fn [frame]
+       (let [values (get-values-range
+                     (instantiate-range-param start frame)
+                     (instantiate-range-param end frame)
+                     (instantiate-range-param step frame))]
+         (match-var-with-values var values frame)))
      frames)))
 
 (defn handle-unknown-var [var _]
