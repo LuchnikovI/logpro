@@ -166,31 +166,43 @@
 
 (defn collect-query? [query] (headed-form? 'collect query))
 
-(defn get-template [collect-query]
+(defn desug-collect-query [collect-query]
   (let [form-size (count collect-query)]
-    (if (or (= form-size 4) (= form-size 5))
-      (nth collect-query 1)
+    (case form-size
+      5 collect-query
+      4 (list
+         (nth collect-query 0)
+         (nth collect-query 1)
+         (nth collect-query 2)
+         (nth collect-query 2)
+         (nth collect-query 3))
+      3 (list
+         (nth collect-query 0)
+         (nth collect-query 1)
+         (nth collect-query 1)
+         (nth collect-query 1)
+         (nth collect-query 2))
       (throw (ex-info "Bad COLLECT query" {'collect-query collect-query})))))
+
+(defn get-template [collect-query]
+  (-> collect-query
+      desug-collect-query
+      (nth 1)))
 
 (defn get-label [collect-query]
-  (let [form-size (count collect-query)]
-    (if (or (= form-size 4) (= form-size 5))
-      (nth collect-query 2)
-      (throw (ex-info "Bad COLLECT query" {'collect-query collect-query})))))
+  (-> collect-query
+      desug-collect-query
+      (nth 2)))
 
 (defn get-query [collect-query]
-  (let [form-size (count collect-query)]
-    (case form-size
-      4 (nth collect-query 2)
-      5 (nth collect-query 3)
-      (throw (ex-info "Bad COLLECT query" {'collect-query collect-query})))))
+  (-> collect-query
+      desug-collect-query
+      (nth 3)))
 
 (defn get-bag [collect-query]
-  (let [form-size (count collect-query)]
-    (case form-size
-      4 (nth collect-query 3)
-      5 (nth collect-query 4)
-      (throw (ex-info "Bad COLLECT query" {'collect-query collect-query})))))
+  (-> collect-query
+      desug-collect-query
+      (nth 4)))
 
 ;; TODO: type checking for rnage parameters
 
