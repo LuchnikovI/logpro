@@ -8,10 +8,9 @@
                                   clojure-pred-query? not-query? is-query? and-query? or-query?
                                   assertion? rule? get-assertion-body unmangle-variable eq-query?
                                   get-eq-lhs get-eq-rhs range-query? get-var get-start get-step
-                                  get-end in-query? get-in-lhs get-in-rhs mangle-variable
-                                  get-id! get-query get-bag get-template collect-query?
-                                  get-mangler attach-postfix get-unify-lhs get-unify-rhs
-                                  unify-query?]]
+                                  get-end in-query? get-in-lhs get-in-rhs get-label-id! get-query
+                                  get-label get-bag get-template collect-query? attach-postfix
+                                  get-unify-lhs get-unify-rhs unify-query?]]
             [logpro.unification :refer [unify unify-with-every]]
             [logpro.constraints-engine :refer [add-equality-constraint]]))
 
@@ -151,33 +150,31 @@
       #(unify-with-every lhs rhss %)
       frames))))
 
-(defn attach-query-id! [var query-inst]
-  (let [id (get-id! query-inst)]
-    (if-let [mangler (get-mangler var)]
-      (-> var
-          unmangle-variable
-          (attach-postfix "-" id)
-          (mangle-variable mangler))
-      (attach-postfix var "-" id))))
+(defn attach-label-id! [var label-inst]
+  (let [label-id (get-label-id! label-inst)]
+    (-> var
+        unmangle-variable
+        (attach-postfix "-" label-id))))
 
-(defn instantiate-query [query frame]
-  (instantiate query frame (fn [expr _] (unmangle-variable expr))))
+(defn instantiate-label [label frame]
+  (instantiate label frame (fn [expr _] (unmangle-variable expr))))
 
-(defn instantiate-template [template frame query]
-  (let [inst-query (instantiate-query query frame)]
-    (instantiate template frame (fn [var _] (attach-query-id! var inst-query)))))
+(defn instantiate-template [template frame label]
+  (let [inst-label (instantiate-label label frame)]
+    (instantiate template frame (fn [var _] (attach-label-id! var inst-label)))))
 
-(defn ev-to-list [template query bag db frame]
+(defn ev-to-list [template label query bag db frame]
   (as-> (ev-query query db [frame]) $
-        (map #(instantiate-template template % query) $)
-        (unify bag $ frame)))
+    (map #(instantiate-template template % label) $)
+    (unify bag $ frame)))
 
 (defn ev-collect-query [collect-query db frames]
   (let [template (get-template collect-query)
         query (get-query collect-query)
+        label (get-label collect-query)
         bag (get-bag collect-query)]
     (keep
-     #(ev-to-list template query bag db %)
+     #(ev-to-list template label query bag db %)
      frames)))
 
 (defn ev-unify-query [query _ frames]

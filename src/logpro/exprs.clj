@@ -47,14 +47,14 @@
 
 (def mangling-counter (atom 0))
 
-(def ids (atom {}))
+(def label-ids (atom {}))
 
-(defn get-id! [smthng]
-  (if-let [id (@ids smthng)]
-    id
-    (let [new-id (count @ids)]
-      (swap! ids assoc smthng new-id)
-      new-id)))
+(defn get-label-id! [smthng]
+  (if-let [label-id (@label-ids smthng)]
+    label-id
+    (let [new-label-id (count @label-ids)]
+      (swap! label-ids assoc smthng new-label-id)
+      new-label-id)))
 
 (defn get-mangling-counter! []
   (let [curr-counter @mangling-counter]
@@ -67,16 +67,11 @@
 (defn mangle-variable [variable postfix]
   (attach-postfix variable "@" postfix))
 
-(defn get-mangler [variable]
-  (let [variable (str variable)
-        variable-len (count variable)]
-    (when-let [idx (last-index-of variable "@")]
-      (subs variable (inc idx) variable-len))))
-
 (defn unmangle-variable [variable]
-  (let [variable (str variable)
-        idx (last-index-of variable "@")]
-    (symbol (subs variable 0 idx))))
+  (let [variable (str variable)]
+    (if-let [idx (last-index-of variable "@")]
+      (symbol (subs variable 0 idx))
+      variable)))
 
 (defn mangle-rule [rule]
   (let [postfix (get-mangling-counter!)]
@@ -172,19 +167,30 @@
 (defn collect-query? [query] (headed-form? 'collect query))
 
 (defn get-template [collect-query]
-  (if (not= (count collect-query) 4)
-      (throw (ex-info "Bad COLLECT query" {'collect-query collect-query}))
-      (nth collect-query 1)))
+  (let [form-size (count collect-query)]
+    (if (or (= form-size 4) (= form-size 5))
+      (nth collect-query 1)
+      (throw (ex-info "Bad COLLECT query" {'collect-query collect-query})))))
+
+(defn get-label [collect-query]
+  (let [form-size (count collect-query)]
+    (if (or (= form-size 4) (= form-size 5))
+      (nth collect-query 2)
+      (throw (ex-info "Bad COLLECT query" {'collect-query collect-query})))))
 
 (defn get-query [collect-query]
-  (if (not= (count collect-query) 4)
-      (throw (ex-info "Bad COLLECT query" {'collect-query collect-query}))
-      (nth collect-query 2)))
+  (let [form-size (count collect-query)]
+    (case form-size
+      4 (nth collect-query 2)
+      5 (nth collect-query 3)
+      (throw (ex-info "Bad COLLECT query" {'collect-query collect-query})))))
 
 (defn get-bag [collect-query]
-  (if (not= (count collect-query) 4)
-      (throw (ex-info "Bad COLLECT query" {'collect-query collect-query}))
-      (nth collect-query 3)))
+  (let [form-size (count collect-query)]
+    (case form-size
+      4 (nth collect-query 3)
+      5 (nth collect-query 4)
+      (throw (ex-info "Bad COLLECT query" {'collect-query collect-query})))))
 
 ;; TODO: type checking for rnage parameters
 
