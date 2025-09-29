@@ -1,6 +1,6 @@
 (ns logpro.ev
   (:require [logpro.frames :refer [filter-invalid-frames flatmap invalid-frame? empty-frames-stream
-                                   get-single-elem-stream instantiate instantiate-stream]]
+                                   get-single-elem-stream instantiate double-instantiate-stream]]
             [logpro.matching :refer [match]]
             [logpro.db :refer [fetch-assertions fetch-rules add-assertion add-rule]]
             [logpro.exprs :refer [mangle-rule get-conclusion get-rule-body get-and-body get-or-body
@@ -217,7 +217,7 @@
                           {:type :assertion-added
                            :db (add-assertion db expr)}))
     :else (let [frames (ev-query expr db frames)
-                results (instantiate-stream expr frames (fn [expr _] (unmangle-variable expr)))]
+                results (double-instantiate-stream expr frames)]
             {:type :query
              :db db
              :results results})))

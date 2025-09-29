@@ -2,7 +2,8 @@
   (:require [logpro.exprs :refer
              [variable? vararg-head? get-varargs empty-expr? compound-expr?
               empty-expr make-pair-expression vararg-symbol extend-compound-expr
-              get-expr-head get-expr-tail numerical-literal?]]))
+              get-expr-head get-expr-tail numerical-literal? unmangle-variable
+              get-label-id! attach-postfix]]))
 
 ;; single frame operations
 
@@ -94,3 +95,16 @@
 
 (defn instantiate-stream [expr frames unbound-var-handler]
   (map #(instantiate expr % unbound-var-handler) frames))
+
+;; variables in the second instantiation are labeled
+;; according to the first expr instantiation
+(defn double-instantiate-stream [expr frames]
+  (let [exprs-inst (map #(instantiate expr % (fn [var _] (unmangle-variable var))) frames)]
+    (map
+     #(instantiate
+       %1
+       %2
+       (fn [var _]
+         (attach-postfix var "-" (get-label-id! %1))))
+     exprs-inst
+     frames)))
