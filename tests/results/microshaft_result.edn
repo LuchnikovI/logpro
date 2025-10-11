@@ -45,7 +45,7 @@
 ;; Query input:
 ;; Result:
 (meeting-time (Bitdiddle Ben) (Wednesday 3 pm))
-(meeting-time ?person-0 (Wednesday 4 pm))
+(meeting-time ?person (Wednesday 4 pm))
 (meeting-time (Hacker Alyssa P) (Wednesday 3 pm))
 (meeting-time (Fect Cy D) (Wednesday 3 pm))
 (meeting-time (Tweakit Lem E) (Wednesday 3 pm))

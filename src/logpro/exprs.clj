@@ -73,6 +73,12 @@
       (symbol (subs variable 0 idx))
       variable)))
 
+(defn attach-label-id! [var label-inst]
+  (let [label-id (get-label-id! label-inst)]
+    (-> var
+        unmangle-variable
+        (attach-postfix "-" label-id))))
+
 (defn mangle-rule [rule]
   (let [postfix (get-mangling-counter!)]
     (letfn [(helper [rule]

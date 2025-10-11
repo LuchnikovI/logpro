@@ -1,6 +1,6 @@
 (ns logpro.ev
   (:require [logpro.frames :refer [filter-invalid-frames flatmap invalid-frame? empty-frames-stream
-                                   get-single-elem-stream instantiate double-instantiate-stream]]
+                                   get-single-elem-stream instantiate instantiate-stream]]
             [logpro.matching :refer [match]]
             [logpro.db :refer [fetch-assertions fetch-rules add-assertion add-rule]]
             [logpro.exprs :refer [mangle-rule get-conclusion get-rule-body get-and-body get-or-body
@@ -8,8 +8,8 @@
                                   clojure-pred-query? not-query? is-query? and-query? or-query?
                                   assertion? rule? get-assertion-body unmangle-variable eq-query?
                                   get-eq-lhs get-eq-rhs range-query? get-var get-start get-step
-                                  get-end in-query? get-in-lhs get-in-rhs get-label-id! get-query
-                                  get-label get-bag get-template collect-query? attach-postfix
+                                  get-end in-query? get-in-lhs get-in-rhs get-query attach-label-id!
+                                  get-label get-bag get-template collect-query?
                                   get-unify-lhs get-unify-rhs unify-query?]]
             [logpro.unification :refer [unify unify-with-every]]
             [logpro.constraints-engine :refer [add-equality-constraint]]))
@@ -161,12 +161,6 @@
       #(unify-with-every lhs rhss %)
       frames))))
 
-(defn attach-label-id! [var label-inst]
-  (let [label-id (get-label-id! label-inst)]
-    (-> var
-        unmangle-variable
-        (attach-postfix "-" label-id))))
-
 (defn instantiate-label [label frame]
   (instantiate label frame (fn [expr _] (unmangle-variable expr))))
 
@@ -217,7 +211,7 @@
                           {:type :assertion-added
                            :db (add-assertion db expr)}))
     :else (let [frames (ev-query expr db frames)
-                results (double-instantiate-stream expr frames)]
+                results (instantiate-stream expr frames (fn [var _] (unmangle-variable var)))]
             {:type :query
              :db db
              :results results})))

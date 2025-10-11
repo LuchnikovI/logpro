@@ -1,7 +1,8 @@
 (ns logpro.constraints-engine
   (:require [logpro.exprs :refer [make-subtract-expression numerical-literal? numerical-op?
                                   get-expr-head get-expr-tail variable?]]
-            [logpro.frames :refer [get-constraints update-constraints get-propagated-var propagate-var]]
+            [logpro.frames :refer [get-constraints get-propagated-var propagate-var
+                                   update-constraints]]
             [logpro.matching :refer [match]]))
 
 ;; relation abstraction
@@ -152,7 +153,7 @@
         :else frame))))
 
 (defn add-equality-constraint [frame lhs rhs]
-  (let [relation (equality-constraint->relation lhs rhs)
-        frame (update-constraints frame #(insert-constraint % relation))]
-    (awake-relation frame relation)))
-
+  (let [relation (equality-constraint->relation lhs rhs)]
+    (-> frame
+        (update-constraints #(insert-constraint % relation))
+        (awake-relation relation))))
