@@ -1,31 +1,27 @@
-(ns logpro.constraints-engine
-  (:require [logpro.exprs :refer [make-subtract-expression numerical-literal? numerical-op?
-                                  get-expr-head get-expr-tail variable?]]
-            [logpro.frames :refer [get-constraints get-propagated-var propagate-var
-                                   update-constraints]]
-            [logpro.matching :refer [match]]))
-
-;; relation abstraction
+(ns logpro.relation
+  (:require
+   [logpro.exprs :refer [numerical-op? get-expr-head get-expr-tail numerical-literal? variable?
+                         make-subtract-expression]]))
 
 (defn make-constant-relation [val] {:free-term val})
 
 (defn make-single-var-relation [name] {:free-term 0 name 1})
 
-(defn constant-relation? [relation] (= (count relation) 1))
+(defn rebuild-relation [relation xf] (into {} xf relation))
+
+(def transduce-relation transduce)
+
+(defn constant-relation? [relation] (and (= (count relation) 1) (:free-term relation)))
 
 (def get-free-term :free-term)
-
-(def get-seq seq)
 
 (defn insert-or-merge [merge-fn m key val]
   (if (m key)
     (update m key #(merge-fn % val))
     (assoc m key (merge-fn val))))
 
-(defn make-from-seq [s] (into {} s))
-
 (defn scale-relation [factor relation]
-  (make-from-seq (map (fn [[k v]] [k (* factor v)]) (get-seq relation))))
+  (rebuild-relation relation (map (fn [[k v]] [k (* factor v)]))))
 
 (defn get-variables [relation]
   (filter #(not= % :free-term) (keys relation)))
@@ -91,69 +87,10 @@
     :else (throw (ex-info "Non-numerical input in numerical expression" {'input expr}))))
 
 (defn remove-zeros-from-relation [relation]
-  (make-from-seq (filter (fn [[var val]] (or (= var :free-term) (not= val 0))) (get-seq relation))))
+  (rebuild-relation relation (filter (fn [[var val]] (or (not= val 0) (= var :free-term))))))
 
 (defn equality-constraint->relation [lhs rhs]
   (let [expr (make-subtract-expression lhs rhs)]
     (-> expr
         ev-to-relation
         remove-zeros-from-relation)))
-
-(defn compute-var-coeff-prod [[var coeff] frame]
-  (* coeff (get-propagated-var frame var)))
-
-(defn ev-relation [relation frame]
-  (let [free-term (:free-term relation)
-        var-coeff-stream (filter #(not= (first %) :free-term) (get-seq relation))
-        val-stream (map #(compute-var-coeff-prod % frame) var-coeff-stream)]
-    (+ free-term (reduce + val-stream))))
-
-(defn equal-zero? [relation frame]
-    (= 0 (ev-relation relation frame)))
-
-(defn solve-wrt-var [var relation frame]
-  (let [coeff (get-coefficient relation var)]
-    (- (/ (ev-relation (delete-variable relation var) frame) coeff))))
-
-;; constraints network abstraction
-
-(defn insert-or-conj [m k v]
-  (if (m k)
-    (update m k #(conj % v))
-    (assoc m k [v])))
-
-(defn insert-constraint [constraints relation]
-  (reduce
-   (fn [constraints var]
-     (insert-or-conj constraints var relation))
-   constraints
-   (get-variables relation)))
-
-(defn get-relations-given-var [constraints var]
-  (constraints var))
-
-(declare awake-relation)
-
-(defn awake-var-assoc-relations [var frame]
-  (reduce awake-relation
-          frame
-          (get-relations-given-var (get-constraints frame) var)))
-
-(defn awake-relation [frame relation]
-  (if (nil? frame)
-    nil
-    (let [unknown-vars (filter (comp not #(get-propagated-var frame %)) (get-variables relation))]
-      (cond
-        (empty? unknown-vars) (if (equal-zero? relation frame) frame nil)
-        (= (count unknown-vars) 1) (let [var (first unknown-vars)
-                                         val (solve-wrt-var var relation frame)
-                                         frame (propagate-var frame var val)
-                                         frame (match var val frame)]
-                                     (awake-var-assoc-relations var frame))
-        :else frame))))
-
-(defn add-equality-constraint [frame lhs rhs]
-  (let [relation (equality-constraint->relation lhs rhs)]
-    (-> frame
-        (update-constraints #(insert-constraint % relation))
-        (awake-relation relation))))

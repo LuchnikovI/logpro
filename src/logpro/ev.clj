@@ -1,7 +1,7 @@
 (ns logpro.ev
   (:require [logpro.frames :refer [filter-invalid-frames flatmap invalid-frame? empty-frames-stream
-                                   get-single-elem-stream instantiate instantiate-stream]]
-            [logpro.matching :refer [match]]
+                                   get-single-elem-stream instantiate instantiate-stream
+                                   unify unify-with-every match add-equality-constraint]]
             [logpro.db :refer [fetch-assertions fetch-rules add-assertion add-rule]]
             [logpro.exprs :refer [mangle-rule get-conclusion get-rule-body get-and-body get-or-body
                                   get-not-body get-is-lhs get-is-rhs get-clojure-pred-body
@@ -10,9 +10,7 @@
                                   get-eq-lhs get-eq-rhs range-query? get-var get-start get-step
                                   get-end in-query? get-in-lhs get-in-rhs get-query attach-label-id!
                                   get-label get-bag get-template collect-query?
-                                  get-unify-lhs get-unify-rhs unify-query?]]
-            [logpro.unification :refer [unify unify-with-every]]
-            [logpro.constraints-engine :refer [add-equality-constraint]]))
+                                  get-unify-lhs get-unify-rhs unify-query?]]))
 
 (defn find-assertions [query db frame]
   (filter-invalid-frames
