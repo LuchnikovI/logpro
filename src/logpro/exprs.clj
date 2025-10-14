@@ -146,7 +146,7 @@
     (throw (ex-info "Bad Clojure predicate query!", {'clojure-preidcate-query clojure-pred-query}))
     (rest clojure-pred-query)))
 
-(defn eq-query? [query] (headed-form? 'eq query))
+(defn eq-query? [query] (headed-form? '= query))
 
 (defn get-eq-lhs [eq-query]
   (if (not= (count eq-query) 3)
@@ -227,7 +227,7 @@
 (defn get-step [rnage-query]
   (nth rnage-query 4 1))
 
-(defn unify-query? [query] (headed-form? '= query))
+(defn unify-query? [query] (headed-form? 'eq query))
 
 (defn get-unify-lhs [unify-query]
   (if (not= (count unify-query) 3)

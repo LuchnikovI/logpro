@@ -1,4 +1,4 @@
 (rule (sum ?x ?y ?sum)
- (and (eq ?sum (+ ?x ?y))
+ (and (= ?sum (+ ?x ?y))
       (range ?x 0 100)
       (range ?y 0 100)))
