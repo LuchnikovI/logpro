@@ -1,6 +1,7 @@
 (ns logpro.exprs
   (:require
-   [clojure.string :refer [last-index-of]]))
+   [clojure.string :refer [last-index-of]]
+   [logpro.state :refer [get-mangling-counter! get-variable-id!]]))
 
 (defn variable? [expr]
   (and (symbol? expr) (= (first (str expr)) \?)))
@@ -45,22 +46,6 @@
 
 (defn rule? [expr] (headed-form? 'rule expr))
 
-(def mangling-counter (atom 0))
-
-(def label-ids (atom {}))
-
-(defn get-label-id! [smthng]
-  (if-let [label-id (@label-ids smthng)]
-    label-id
-    (let [new-label-id (count @label-ids)]
-      (swap! label-ids assoc smthng new-label-id)
-      new-label-id)))
-
-(defn get-mangling-counter! []
-  (let [curr-counter @mangling-counter]
-    (swap! mangling-counter inc)
-    curr-counter))
-
 (defn attach-postfix [variable sep postfix]
   (symbol (str variable sep postfix)))
 
@@ -74,7 +59,7 @@
       variable)))
 
 (defn attach-label-id! [var label-inst]
-  (let [label-id (get-label-id! label-inst)]
+  (let [label-id (get-variable-id! label-inst)]
     (-> var
         unmangle-variable
         (attach-postfix "-" label-id))))

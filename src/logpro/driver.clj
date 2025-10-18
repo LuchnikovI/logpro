@@ -46,30 +46,29 @@
 (defmethod display-result :end-of-file [_]
   (emit-prompt end-of-file-prompt))
 
-(defn get-error-result [db ex]
+(defn get-error-result [ex]
   {:type :error
-   :db db
    :error (list 'error (list 'message (ex-message ex)) (list 'data (ex-data ex)))})
 
-(defn read-eval-print-succ [db frames]
-  (let [result (ev (read-forms) db frames)]
+(defn read-eval-print-succ [frames]
+  (let [result (ev (read-forms) frames)]
     (display-result result)
     result))
 
-(defn read-eval-print-fail [db ex]
-  (let [result (get-error-result db ex)]
+(defn read-eval-print-fail [ex]
+  (let [result (get-error-result ex)]
     (display-result result)
     result))
 
-(defn read-eval-print [db frames]
+(defn read-eval-print [frames]
   (try
-    (read-eval-print-succ db frames)
-    (catch Exception ex (read-eval-print-fail db ex))))
+    (read-eval-print-succ frames)
+    (catch Exception ex (read-eval-print-fail ex))))
 
-(defn run-driver-loop [db frames]
+(defn run-driver-loop [frames]
   (emit-prompt input-prompt)
-  (let [result (read-eval-print db frames)]
+  (let [result (read-eval-print frames)]
     (case (:type result)
       :end-of-file nil
-      (recur (:db result) (init-frames-stream)))))
+      (recur (init-frames-stream)))))
 
