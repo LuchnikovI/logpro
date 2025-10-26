@@ -1,7 +1,9 @@
 (ns logpro.relation
   (:require
-   [logpro.exprs :refer [numerical-op? get-expr-head get-expr-tail numerical-literal? variable?
-                         make-subtract-expression]]))
+   [logpro.exprs :refer [numerical-op? get-expr-head get-expr-tail numerical-literal?
+                         make-subtract-expression]]
+   [logpro.validation :refer [variable?]]
+   [logpro.validation :refer [validation-bug]]))
 
 (defn make-constant-relation [val] {:free-term val})
 
@@ -45,10 +47,7 @@
   (cond
     (= 1 (count relations)) (sub-relations (cons (make-constant-relation 0) relations))
     (= 2 (count relations)) (merge-pair - (first relations) (second relations))
-    :else (throw
-           (ex-info
-            "Operator \"-\" must be applied to one or two arguments"
-            {'arguments-number (count relations)}))))
+    :else (validation-bug)))
 
 (defn mul-pair [lhs-rel rhs-rel]
   (cond
@@ -67,10 +66,7 @@
 (defn div-relations [relations]
   (if (= (count relations) 2)
     (div-pair (first relations) (second relations))
-    (throw
-     (ex-info
-      "Operator \"/\" must be applied to two arguments"
-      {'arguments-number (count relations)}))))
+    (validation-bug)))
 
 (defn ev-to-relation [expr]
   (cond
@@ -81,10 +77,10 @@
                                 - (sub-relations body)
                                 * (mul-relations body)
                                 / (div-relations body)
-                                (throw (ex-info "Unknown numerical operation" {'operation head}))))
+                                (validation-bug)))
     (numerical-literal? expr) (make-constant-relation expr)
     (variable? expr) (make-single-var-relation expr)
-    :else (throw (ex-info "Non-numerical input in numerical expression" {'input expr}))))
+    :else (validation-bug)))
 
 (defn remove-zeros-from-relation [relation]
   (rebuild-relation relation (filter (fn [[var val]] (or (not= val 0) (= var :free-term))))))

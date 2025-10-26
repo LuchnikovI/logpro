@@ -1,8 +1,9 @@
 (ns logpro.frames
   (:require [logpro.exprs :refer
-             [variable? vararg-head? get-varargs empty-expr? compound-expr?
+             [vararg-head? get-varargs empty-expr? compound-expr?
               empty-expr make-pair-expression vararg-symbol extend-compound-expr
               get-expr-head get-expr-tail numerical-literal?]]
+            [logpro.validation :refer [variable?]]
             [logpro.relation :refer [get-variables equality-constraint->relation
                                      delete-variable get-coefficient transduce-relation]]))
 

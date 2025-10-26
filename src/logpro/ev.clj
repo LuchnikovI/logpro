@@ -61,7 +61,7 @@
      frames)))
 
 (defn handle-unbounds-in-is-rhs [var _]
-  (throw (ex-info "RHS of IS query must be fully instantiated!" {'unbound-variable var})))
+  (throw (ex-info "Right hand side of `is` query must be fully instantiated!" {'unbound-variable var})))
 
 (defn instantiate-and-eval-is-rhs [expr frame]
   (eval (instantiate expr frame handle-unbounds-in-is-rhs)))
@@ -201,7 +201,6 @@
 
 (defn ev [expr frames]
   (cond
-    (nil? expr) {:type :end-of-file}
     (assertion? expr) (let [assertion-body (get-assertion-body expr)]
                         (if (rule? assertion-body)
                           (do
