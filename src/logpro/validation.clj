@@ -94,7 +94,7 @@
 (defmethod validate-special-form 'range [form]
   (some-> (or
            (validate-len form #{2 3 4 5})
-           validate-numbers)
+           (validate-numbers (rest form)))
           (wrap-special-form-error form)))
 
 (defmethod validate-special-form 'is [form]
